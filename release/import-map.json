@@ -1,0 +1,281 @@
+{
+  "release": "v65-p101-stage1",
+  "mappings": {
+    "__init__.py": "npu_sparse_attn_sharedkv_int8/__init__.py",
+    "attention.py": "npu_sparse_attn_sharedkv_int8/attention.py",
+    "c8_attention.py": "npu_sparse_attn_sharedkv_int8/c8_attention.py",
+    "cache.py": "npu_sparse_attn_sharedkv_int8/cache.py",
+    "cache_layout.py": "npu_sparse_attn_sharedkv_int8/cache_layout.py",
+    "calibration.py": "npu_sparse_attn_sharedkv_int8/calibration.py",
+    "model_validation.py": "npu_sparse_attn_sharedkv_int8/model_validation.py",
+    "reference.py": "npu_sparse_attn_sharedkv_int8/reference.py",
+    "runtime.py": "npu_sparse_attn_sharedkv_int8/runtime.py",
+    "serve_diagnostics.py": "npu_sparse_attn_sharedkv_int8/serve_diagnostics.py",
+    "vllm_adapter.py": "npu_sparse_attn_sharedkv_int8/vllm_adapter.py",
+    "vllm_metadata.py": "npu_sparse_attn_sharedkv_int8/vllm_metadata.py",
+    "vllm_plugin.py": "npu_sparse_attn_sharedkv_int8/vllm_plugin.py",
+    "data/scales_v1.pt": "npu_sparse_attn_sharedkv_int8/data/scales_v1.pt",
+    "kernels/c8/args.h": "csrc/kernels/c8/args.h",
+    "kernels/c8/attention_impl.h": "csrc/kernels/c8/attention_impl.h",
+    "kernels/c8/c128.cpp": "csrc/kernels/c8/c128.cpp",
+    "kernels/c8/c4.cpp": "csrc/kernels/c8/c4.cpp",
+    "kernels/c8/c4_narrow.h": "csrc/kernels/c8/c4_narrow.h",
+    "kernels/c8/c4_small.cpp": "csrc/kernels/c8/c4_small.cpp",
+    "kernels/c8/c4_wide.h": "csrc/kernels/c8/c4_wide.h",
+    "kernels/c8/config.h": "csrc/kernels/c8/config.h",
+    "kernels/c8/cube_pair.h": "csrc/kernels/c8/cube_pair.h",
+    "kernels/c8/gather.h": "csrc/kernels/c8/gather.h",
+    "kernels/c8/joint_softmax.h": "csrc/kernels/c8/joint_softmax.h",
+    "kernels/c8/joint_tile.h": "csrc/kernels/c8/joint_tile.h",
+    "kernels/c8/metadata.h": "csrc/kernels/c8/metadata.h",
+    "kernels/c8/metadata_balance.h": "csrc/kernels/c8/metadata_balance.h",
+    "kernels/c8/metadata_impl.h": "csrc/kernels/c8/metadata_impl.h",
+    "kernels/c8/residual_quant.h": "csrc/kernels/c8/residual_quant.h",
+    "kernels/c8/schedule.h": "csrc/kernels/c8/schedule.h",
+    "kernels/c8/task_batch.h": "csrc/kernels/c8/task_batch.h",
+    "kernels/c8/task_partition.h": "csrc/kernels/c8/task_partition.h",
+    "kernels/c8/vector.h": "csrc/kernels/c8/vector.h",
+    "kernels/c8/vector_math.h": "csrc/kernels/c8/vector_math.h",
+    "kernels/cache_write.cpp": "csrc/kernels/cache_write.cpp",
+    "kernels/cache_write.h": "csrc/kernels/cache_write.h",
+    "kernels/cube_pair_pipeline.h": "csrc/kernels/cube_pair_pipeline.h",
+    "kernels/residual_quant.h": "csrc/kernels/residual_quant.h",
+    "kernels/row_scale_vector.h": "csrc/kernels/row_scale_vector.h",
+    "kernels/sharedkv.cpp": "csrc/kernels/sharedkv.cpp",
+    "kernels/sharedkv.h": "csrc/kernels/sharedkv.h",
+    "kernels/sharedkv_adaptive.cpp": "csrc/kernels/sharedkv_adaptive.cpp",
+    "kernels/sharedkv_config.h": "csrc/kernels/sharedkv_config.h",
+    "kernels/sharedkv_dynamic.cpp": "csrc/kernels/sharedkv_dynamic.cpp",
+    "kernels/sharedkv_dynamic_dense.cpp": "csrc/kernels/sharedkv_dynamic_dense.cpp",
+    "kernels/sharedkv_dynamic_grouped.cpp": "csrc/kernels/sharedkv_dynamic_grouped.cpp",
+    "kernels/sharedkv_medium.cpp": "csrc/kernels/sharedkv_medium.cpp",
+    "kernels/sharedkv_packed.cpp": "csrc/kernels/sharedkv_packed.cpp",
+    "kernels/sharedkv_packed_sparse.cpp": "csrc/kernels/sharedkv_packed_sparse.cpp",
+    "kernels/sharedkv_paired.cpp": "csrc/kernels/sharedkv_paired.cpp",
+    "kernels/sharedkv_paired_sparse.cpp": "csrc/kernels/sharedkv_paired_sparse.cpp",
+    "kernels/sharedkv_wide.cpp": "csrc/kernels/sharedkv_wide.cpp",
+    "kernels/sharedkv_wide_trim.cpp": "csrc/kernels/sharedkv_wide_trim.cpp",
+    "kernels/sparse_gather.h": "csrc/kernels/sparse_gather.h",
+    "kernels/vector_batch.h": "csrc/kernels/vector_batch.h",
+    "kernels/vector_math.h": "csrc/kernels/vector_math.h",
+    "host/c8_launch.cpp": "csrc/host/c8_launch.cpp",
+    "host/launch.cpp": "csrc/host/launch.cpp",
+    "kernels/c8/README.md": "docs/history/c8_kernel.md",
+    "tests/__init__.py": "tests/npu/__init__.py",
+    "tests/c8_schedule_stub/kernel_operator.h": "tests/cpp/stubs/kernel_operator.h",
+    "tests/fixtures/activations/metrics.jsonl": "tests/fixtures/activations/metrics.jsonl",
+    "tests/fixtures/activations/model.layers.0.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.0.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.1.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.1.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.30.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.30.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.31.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.31.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.4.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.4.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.57.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.57.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.58.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.58.self_attn.call_1.pt",
+    "tests/fixtures/activations/model.layers.60.self_attn.call_1.pt": "tests/fixtures/activations/model.layers.60.self_attn.call_1.pt",
+    "tests/fixtures/activations/mtp.0.self_attn.call_1.pt": "tests/fixtures/activations/mtp.0.self_attn.call_1.pt",
+    "tests/fixtures/activations/mtp.1.self_attn.call_1.pt": "tests/fixtures/activations/mtp.1.self_attn.call_1.pt",
+    "tests/fixtures/activations/mtp.2.self_attn.call_1.pt": "tests/fixtures/activations/mtp.2.self_attn.call_1.pt",
+    "tests/support/__init__.py": "tests/support/__init__.py",
+    "tests/support/attention_cases.py": "tests/support/attention_cases.py",
+    "tests/support/baseline.py": "tests/support/baseline.py",
+    "tests/support/serving_shapes.py": "tests/support/serving_shapes.py",
+    "tests/test_adapter.py": "tests/npu/test_adapter.py",
+    "tests/test_attention.py": "tests/npu/test_attention.py",
+    "tests/test_capacity.py": "tests/npu/test_capacity.py",
+    "tests/test_capacity_dynamic.py": "tests/npu/test_capacity_dynamic.py",
+    "tests/test_dynamic.py": "tests/npu/test_dynamic.py",
+    "tests/test_local_query.py": "tests/npu/test_local_query.py",
+    "tests/test_metadata_views.py": "tests/npu/test_metadata_views.py",
+    "tests/test_policy.py": "tests/npu/test_policy.py",
+    "tests/test_queue.py": "tests/npu/test_queue.py",
+    "tests/test_retained_capacity.py": "tests/npu/test_retained_capacity.py",
+    "tests/test_schedule.cpp": "tests/cpp/test_schedule.cpp",
+    "tests/test_sparse_edges.py": "tests/npu/test_sparse_edges.py",
+    "tests/test_task_batch.py": "tests/npu/test_task_batch.py",
+    "tests/test_task_batch_empty.py": "tests/npu/test_task_batch_empty.py",
+    "tests/test_task_batch_packed.py": "tests/npu/test_task_batch_packed.py",
+    "tests/test_task_batch_wide.py": "tests/npu/test_task_batch_wide.py",
+    "tests/test_task_batch_window.py": "tests/npu/test_task_batch_window.py",
+    "docs/CAPACITY.md": "docs/history/CAPACITY.md",
+    "docs/DELIVERY.md": "docs/history/DELIVERY.md",
+    "docs/OPTIMIZATION_20261028.md": "docs/history/OPTIMIZATION_20261028.md",
+    "docs/OPTIMIZATION_20261028_FOLLOWUP.md": "docs/history/OPTIMIZATION_20261028_FOLLOWUP.md",
+    "docs/OPTIMIZATION_20261029.md": "docs/history/OPTIMIZATION_20261029.md",
+    "docs/STAGE_RELEASE.md": "docs/history/STAGE_RELEASE.md",
+    "docs/archive.json": "docs/history/archive.json",
+    "docs/evidence/c8_v65_acceptance.json": "docs/history/evidence/c8_v65_acceptance.json",
+    "docs/evidence/c8_v65_delivery.json": "docs/history/evidence/c8_v65_delivery.json",
+    "docs/evidence/c8_v65_profile_summary.json": "docs/history/evidence/c8_v65_profile_summary.json",
+    "docs/evidence/c8_v65_service_cleanup.json": "docs/history/evidence/c8_v65_service_cleanup.json",
+    "docs/evidence/c8_v65_summary.json": "docs/history/evidence/c8_v65_summary.json",
+    "docs/evidence/c8_v65_sync_candidates_final.json": "docs/history/evidence/c8_v65_sync_candidates_final.json",
+    "docs/evidence/c8_v65_sync_flow_final.json": "docs/history/evidence/c8_v65_sync_flow_final.json",
+    "docs/evidence/e2e_c8_v65_profile_summary.json": "docs/history/evidence/e2e_c8_v65_profile_summary.json",
+    "docs/evidence/e2e_c8_v65_summary.json": "docs/history/evidence/e2e_c8_v65_summary.json",
+    "docs/evidence/stage1_summary.json": "docs/history/evidence/stage1_summary.json",
+    "docs/evidence/v65_default_delivery.json": "docs/history/evidence/v65_default_delivery.json",
+    "docs/reports/v65_e2e.md": "docs/history/reports/v65_e2e.md",
+    "docs/reports/v65_kernel.md": "docs/history/reports/v65_kernel.md",
+    "release/manifest.json": "release/upstream-v65-p101.json"
+  },
+  "adapted_files": {
+    "__init__.py": {
+      "path": "npu_sparse_attn_sharedkv_int8/__init__.py",
+      "reason": "Lazy public exports; package and baseline versions retained."
+    },
+    "attention.py": {
+      "path": "npu_sparse_attn_sharedkv_int8/attention.py",
+      "reason": "Package-relative imports and package-local native library discovery."
+    },
+    "c8_attention.py": {
+      "path": "npu_sparse_attn_sharedkv_int8/c8_attention.py",
+      "reason": "Package-relative imports and package-local native library discovery."
+    },
+    "cache.py": {
+      "path": "npu_sparse_attn_sharedkv_int8/cache.py",
+      "reason": "Package-relative imports and package-local native library discovery."
+    },
+    "runtime.py": {
+      "path": "npu_sparse_attn_sharedkv_int8/runtime.py",
+      "reason": "Package-relative imports and package-local native library discovery."
+    },
+    "tests/support/attention_cases.py": {
+      "path": "tests/support/attention_cases.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/support/serving_shapes.py": {
+      "path": "tests/support/serving_shapes.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_attention.py": {
+      "path": "tests/npu/test_attention.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_capacity.py": {
+      "path": "tests/npu/test_capacity.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_capacity_dynamic.py": {
+      "path": "tests/npu/test_capacity_dynamic.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_dynamic.py": {
+      "path": "tests/npu/test_dynamic.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_local_query.py": {
+      "path": "tests/npu/test_local_query.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_metadata_views.py": {
+      "path": "tests/npu/test_metadata_views.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_policy.py": {
+      "path": "tests/npu/test_policy.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_queue.py": {
+      "path": "tests/npu/test_queue.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_retained_capacity.py": {
+      "path": "tests/npu/test_retained_capacity.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_schedule.cpp": {
+      "path": "tests/cpp/test_schedule.cpp",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_sparse_edges.py": {
+      "path": "tests/npu/test_sparse_edges.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_task_batch.py": {
+      "path": "tests/npu/test_task_batch.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_task_batch_empty.py": {
+      "path": "tests/npu/test_task_batch_empty.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_task_batch_packed.py": {
+      "path": "tests/npu/test_task_batch_packed.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_task_batch_wide.py": {
+      "path": "tests/npu/test_task_batch_wide.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "tests/test_task_batch_window.py": {
+      "path": "tests/npu/test_task_batch_window.py",
+      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+    },
+    "data/scales_v1.pt": {
+      "path": "npu_sparse_attn_sharedkv_int8/data/scales_v1.pt",
+      "reason": "Replace provenance model path with public model identifier; all scale storage bytes and other payload fields retained. See release/publication.json."
+    },
+    "docs/CAPACITY.md": {
+      "path": "docs/history/CAPACITY.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/DELIVERY.md": {
+      "path": "docs/history/DELIVERY.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/OPTIMIZATION_20261028.md": {
+      "path": "docs/history/OPTIMIZATION_20261028.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/OPTIMIZATION_20261028_FOLLOWUP.md": {
+      "path": "docs/history/OPTIMIZATION_20261028_FOLLOWUP.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/OPTIMIZATION_20261029.md": {
+      "path": "docs/history/OPTIMIZATION_20261029.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/STAGE_RELEASE.md": {
+      "path": "docs/history/STAGE_RELEASE.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/archive.json": {
+      "path": "docs/history/archive.json",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/evidence/c8_v65_summary.json": {
+      "path": "docs/history/evidence/c8_v65_summary.json",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/evidence/e2e_c8_v65_profile_summary.json": {
+      "path": "docs/history/evidence/e2e_c8_v65_profile_summary.json",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/evidence/stage1_summary.json": {
+      "path": "docs/history/evidence/stage1_summary.json",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/reports/v65_e2e.md": {
+      "path": "docs/history/reports/v65_e2e.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    },
+    "docs/reports/v65_kernel.md": {
+      "path": "docs/history/reports/v65_kernel.md",
+      "reason": "Publication sanitization of machine-specific locations; historical measurements and source artifact hashes retained."
+    }
+  },
+  "unchanged_imported_file_count": 80,
+  "omitted_from_upstream": {
+    ".gitignore": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "AGENTS.md": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "CMakeLists.txt": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "README.md": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "build.sh": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "configs/int8_stage1.env": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "pyproject.toml": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "results/scales_v1.pt": "Obsolete compatibility symlink; calibration is package-local.",
+    "tools/build_host.py": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest.",
+    "tools/check_release.py": "Replaced by standalone packaging/build/documentation; original identity retained in upstream manifest."
+  },
+  "upstream_manifest_preserved_sha256": "3922956fb66b2006d1f135f6f09fd68d2d31ec47af1d07eea1322439b0fa07cb"
+}

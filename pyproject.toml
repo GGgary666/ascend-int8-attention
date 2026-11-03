@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "npu-sparse-attn-sharedkv-int8"
+version = "0.65.1"
+description = "INT8 sparse shared-KV attention and paged KV cache for Ascend DAV2201"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.10,<2.11"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+npu = ["torch-npu>=2.10,<2.11"]
+test = ["pytest>=8,<10"]
+
+[project.entry-points."vllm.general_plugins"]
+sharedkv_int8 = "npu_sparse_attn_sharedkv_int8.vllm_plugin:register"
+
+[tool.setuptools]
+packages = ["npu_sparse_attn_sharedkv_int8"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+npu_sparse_attn_sharedkv_int8 = ["data/*.pt", "_native/*.so", "_native/manifest.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

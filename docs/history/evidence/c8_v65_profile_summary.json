@@ -1,0 +1,176 @@
+{
+  "matched_input_sha256": "555dd5d399e390140da33ce197b89c70bd7548479832d5b360c518a6bb14f414",
+  "freq_mhz": 1800,
+  "mapping": "Log launch order plus per-kernel occurrence index; CSV export timestamps do not preserve launch order.",
+  "records": [
+    {
+      "stage": "final",
+      "case": "confirm_unseen_005",
+      "entry": "v64",
+      "kernel": "sharedkv_i8_decode_long_v63",
+      "profile_task_us": 71.321426,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "0",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "68.837219",
+        "aiv_vec_time(us)": "12.112778",
+        "aiv_scalar_time(us)": "24.410555",
+        "aiv_scalar_wait_ib_time(us)": "0.270556",
+        "aiv_scalar_wait_id7_time(us)": "23.708889",
+        "aiv_scalar_wait_id9_time(us)": "6.045000"
+      },
+      "max_vec_us": 12.112778,
+      "max_cube_us": 3.42,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_decode_long_v63/0/PipeUtilization_20261028022943322.csv"
+    },
+    {
+      "stage": "final",
+      "case": "confirm_unseen_005",
+      "entry": "latest",
+      "kernel": "sharedkv_i8_c8_sparse",
+      "profile_task_us": 52.001041,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "0",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "49.265556",
+        "aiv_vec_time(us)": "8.492222",
+        "aiv_scalar_time(us)": "14.901667",
+        "aiv_scalar_wait_ib_time(us)": "0.246111",
+        "aiv_scalar_wait_id7_time(us)": "14.138889",
+        "aiv_scalar_wait_id9_time(us)": "6.147222"
+      },
+      "max_vec_us": 8.492222,
+      "max_cube_us": 1.9,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_c8_sparse/0/PipeUtilization_20261028022943154.csv"
+    },
+    {
+      "stage": "final",
+      "case": "confirm_unseen_011",
+      "entry": "v64",
+      "kernel": "sharedkv_i8_fused_wide_trim",
+      "profile_task_us": 58.781178,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "0",
+        "sub_block_id": "vector1",
+        "aiv_time(us)": "56.050556",
+        "aiv_vec_time(us)": "9.671667",
+        "aiv_scalar_time(us)": "12.516666",
+        "aiv_scalar_wait_ib_time(us)": "1.069444",
+        "aiv_scalar_wait_id7_time(us)": "20.192223",
+        "aiv_scalar_wait_id9_time(us)": "12.276111"
+      },
+      "max_vec_us": 9.672778,
+      "max_cube_us": 3.566667,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_fused_wide_trim/0/PipeUtilization_20261028022943491.csv"
+    },
+    {
+      "stage": "final",
+      "case": "confirm_unseen_011",
+      "entry": "latest",
+      "kernel": "sharedkv_i8_c8_dense",
+      "profile_task_us": 43.280865,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "9",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "40.381111",
+        "aiv_vec_time(us)": "5.477222",
+        "aiv_scalar_time(us)": "8.040000",
+        "aiv_scalar_wait_ib_time(us)": "0.251111",
+        "aiv_scalar_wait_id7_time(us)": "15.766111",
+        "aiv_scalar_wait_id9_time(us)": "8.266111"
+      },
+      "max_vec_us": 6.883889,
+      "max_cube_us": 2.377778,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_c8_dense/0/PipeUtilization_20261028022942379.csv"
+    },
+    {
+      "stage": "final",
+      "case": "confirm_unseen_014",
+      "entry": "v64",
+      "kernel": "sharedkv_i8_fused_wide_trim",
+      "profile_task_us": 58.181164,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "0",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "55.634445",
+        "aiv_vec_time(us)": "9.662778",
+        "aiv_scalar_time(us)": "8.915556",
+        "aiv_scalar_wait_ib_time(us)": "2.120556",
+        "aiv_scalar_wait_id7_time(us)": "21.721666",
+        "aiv_scalar_wait_id9_time(us)": "12.830556"
+      },
+      "max_vec_us": 9.662778,
+      "max_cube_us": 2.47,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_fused_wide_trim/1/PipeUtilization_20261028022943661.csv"
+    },
+    {
+      "stage": "final",
+      "case": "confirm_unseen_014",
+      "entry": "latest",
+      "kernel": "sharedkv_i8_c8_dense",
+      "profile_task_us": 46.48093,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "1",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "43.731667",
+        "aiv_vec_time(us)": "6.882222",
+        "aiv_scalar_time(us)": "11.610000",
+        "aiv_scalar_wait_ib_time(us)": "0.225556",
+        "aiv_scalar_wait_id7_time(us)": "14.316667",
+        "aiv_scalar_wait_id9_time(us)": "8.525556"
+      },
+      "max_vec_us": 6.883889,
+      "max_cube_us": 2.377778,
+      "raw": "results/msopprof_c8_v65_pair_final/OPPROF_20261028022913_NSIRANIUCUROMTMU/sharedkv_i8_c8_dense/1/PipeUtilization_20261028022942990.csv"
+    },
+    {
+      "stage": "before",
+      "case": "confirm_unseen_011",
+      "entry": "v64",
+      "kernel": "sharedkv_i8_fused_wide_trim",
+      "profile_task_us": 67.06134,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "0",
+        "sub_block_id": "vector1",
+        "aiv_time(us)": "64.339447",
+        "aiv_vec_time(us)": "9.680555",
+        "aiv_scalar_time(us)": "13.491667",
+        "aiv_scalar_wait_ib_time(us)": "2.509444",
+        "aiv_scalar_wait_id7_time(us)": "22.366112",
+        "aiv_scalar_wait_id9_time(us)": "13.587222"
+      },
+      "max_vec_us": 9.680555,
+      "max_cube_us": 3.566667,
+      "raw": "results/msopprof_c8_v65_pair_ablation_before/OPPROF_20261028023049_PMLIVJQVYSLZXKJT/sharedkv_i8_fused_wide_trim/0/PipeUtilization_20261028023117834.csv"
+    },
+    {
+      "stage": "before",
+      "case": "confirm_unseen_011",
+      "entry": "latest",
+      "kernel": "sharedkv_i8_c8_dense",
+      "profile_task_us": 49.060982,
+      "active_aic": 24,
+      "critical_aiv": {
+        "block_id": "4",
+        "sub_block_id": "vector0",
+        "aiv_time(us)": "46.171665",
+        "aiv_vec_time(us)": "7.898334",
+        "aiv_scalar_time(us)": "7.455000",
+        "aiv_scalar_wait_ib_time(us)": "0.277222",
+        "aiv_scalar_wait_id7_time(us)": "18.768888",
+        "aiv_scalar_wait_id9_time(us)": "10.394444"
+      },
+      "max_vec_us": 7.898334,
+      "max_cube_us": 2.615556,
+      "raw": "results/msopprof_c8_v65_pair_ablation_before/OPPROF_20261028023049_PMLIVJQVYSLZXKJT/sharedkv_i8_c8_dense/0/PipeUtilization_20261028023117223.csv"
+    }
+  ],
+  "limitations": "PMU counters overlap and are not a per-instruction timeline; task duration here is diagnostic, not the acceptance timer."
+}

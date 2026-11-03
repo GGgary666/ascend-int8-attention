@@ -1,0 +1,674 @@
+{
+  "schema_version": 1,
+  "release": "v65-p101-stage1",
+  "package_version": "0.65.1",
+  "created_utc": "2026-10-29T15:07:24.416333+00:00",
+  "status": "frozen_milestone_with_documented_performance_limits",
+  "kernel_baseline": "p101",
+  "kv_protocol": "sharedkv-c8-v1",
+  "platform": {
+    "soc": "Ascend910_9382",
+    "architecture": "DAV2201 / arch22",
+    "cann": "9.2.0",
+    "aic": 24,
+    "aiv": 48
+  },
+  "contract": {
+    "q_residual": true,
+    "p_residual": true,
+    "qk_cube": "int8",
+    "pv_cube": "int8",
+    "softmax_accumulation": "float32",
+    "batch_query_admission_cap": null
+  },
+  "sources": {
+    ".gitignore": {
+      "kind": "file",
+      "bytes": 98,
+      "sha256": "96ba86b6e4e52d4607a2a3c9d195f0769114c116d9008897feae473f066291a2"
+    },
+    "AGENTS.md": {
+      "kind": "file",
+      "bytes": 3383,
+      "sha256": "96eeb2607b5079c08c5a3c2033a5a18daa6c2f797b1b2e144b66151cbc6c3f3a"
+    },
+    "CMakeLists.txt": {
+      "kind": "file",
+      "bytes": 1749,
+      "sha256": "f6e89d7124f5d4d43f5e0e33606e4a94402878ae69819e0c84d16e09fbbdda80"
+    },
+    "README.md": {
+      "kind": "file",
+      "bytes": 6287,
+      "sha256": "a2da9b4ab4cdc739c3dae7e270b2eb334d21513483ee0d38b902ff6ce9177583"
+    },
+    "__init__.py": {
+      "kind": "file",
+      "bytes": 132,
+      "sha256": "34a029a7a1cabd3003842fa6279d62f255777e9e97f006b4ed9b34de3a142993"
+    },
+    "attention.py": {
+      "kind": "file",
+      "bytes": 17601,
+      "sha256": "b0e69654d33866e9f0c008ec699fcdb3aca99c96e5100a4892c2594d0b94e4c1"
+    },
+    "build.sh": {
+      "kind": "file",
+      "bytes": 619,
+      "sha256": "3e4ee3893606bf1cafa0dd83eaa327f9827e4e43f20cedf503ee2eb5af3f924f"
+    },
+    "c8_attention.py": {
+      "kind": "file",
+      "bytes": 5018,
+      "sha256": "fa5394d8b4650f8ded17effad465dfcd66ac6eff722d102083f9a83f4b90bb38"
+    },
+    "cache.py": {
+      "kind": "file",
+      "bytes": 4282,
+      "sha256": "7529aa6124d58b7555623c612f70546c2c0fbdd0806cc75c729b5e5c139c883f"
+    },
+    "cache_layout.py": {
+      "kind": "file",
+      "bytes": 10289,
+      "sha256": "cff53c2d7593814122cf9fbafcd07a0af7b01f8ecfd94b1bc1bcbe4efa76e85f"
+    },
+    "calibration.py": {
+      "kind": "file",
+      "bytes": 2969,
+      "sha256": "27550bf37ae338dbea4147f0a77751ab2992f1bbcac1590cfe9bc44a49e62b05"
+    },
+    "configs/int8_stage1.env": {
+      "kind": "file",
+      "bytes": 385,
+      "sha256": "6c963b6921b6d6de4468e6cc6cfdfb5849e5eb2542fdcb754706a3a7512eaf99"
+    },
+    "data/scales_v1.pt": {
+      "kind": "file",
+      "bytes": 297739,
+      "sha256": "2834b49b748f3b2022718a03ac215167dd1b61203f9289cf1c11e0c95b979676"
+    },
+    "docs/CAPACITY.md": {
+      "kind": "file",
+      "bytes": 6577,
+      "sha256": "8cfe1de28e76402627d53e67c4aa48b426cdf2b25653b4a82d621c1ecdc27e35"
+    },
+    "docs/DELIVERY.md": {
+      "kind": "file",
+      "bytes": 5094,
+      "sha256": "6cf4328c2818f5820ba0561b9e530c27b0d7970fa68544cd5d446eea9c2bd338"
+    },
+    "docs/OPTIMIZATION_20261028.md": {
+      "kind": "file",
+      "bytes": 2895,
+      "sha256": "67f189b58d6cd9db0bd2815b186b73fb7814e5e03316dd5eb6583eaf93d2593c"
+    },
+    "docs/OPTIMIZATION_20261028_FOLLOWUP.md": {
+      "kind": "file",
+      "bytes": 4369,
+      "sha256": "b7821f4a1094f453dabb9c37b08342e509d3004da2e6e13daf901146896b26d0"
+    },
+    "docs/OPTIMIZATION_20261029.md": {
+      "kind": "file",
+      "bytes": 2326,
+      "sha256": "03d477751485bf4b1d010e9205f262b6987d09ddf12fe16140476bcecd931622"
+    },
+    "docs/STAGE_RELEASE.md": {
+      "kind": "file",
+      "bytes": 5444,
+      "sha256": "cc5b68e749d001904c00b910133ae2d9823fe8e1f41bde6373ea6e3cf97feac3"
+    },
+    "docs/archive.json": {
+      "kind": "file",
+      "bytes": 3622,
+      "sha256": "a8cb11dfa87ccce88329266c60bf232f64443cb77db27ee3b7c905487029a860"
+    },
+    "docs/evidence/c8_v65_acceptance.json": {
+      "kind": "file",
+      "bytes": 3747,
+      "sha256": "8730a924f1c5b2076c3969dd4fa56f5c4ea06af92350afe23774e871d545cdcc"
+    },
+    "docs/evidence/c8_v65_delivery.json": {
+      "kind": "file",
+      "bytes": 9922,
+      "sha256": "4c0fb2b38d7376e9c31254a42da751a4b70edd31cd0efdbe911a81f1aafd1f3d"
+    },
+    "docs/evidence/c8_v65_profile_summary.json": {
+      "kind": "file",
+      "bytes": 6676,
+      "sha256": "ecfbe2c6d0eaea9e398630be6c0d0dcaa5b8a112f9a6a7642216bb8d27bb5735"
+    },
+    "docs/evidence/c8_v65_service_cleanup.json": {
+      "kind": "file",
+      "bytes": 433,
+      "sha256": "a36025d7a2f0bb2646adc3afe7c22cd07b9dd8fa9256827a4ab4e547d9b2b73a"
+    },
+    "docs/evidence/c8_v65_summary.json": {
+      "kind": "file",
+      "bytes": 163759,
+      "sha256": "eb3d69f07fe8e560f3181f19ec7c57062b33bea47893f9e90855c0a398367d33"
+    },
+    "docs/evidence/c8_v65_sync_candidates_final.json": {
+      "kind": "file",
+      "bytes": 88353,
+      "sha256": "603088535c883d0961ce3ced6683d7e7a6c11a56ca96fa29359d71766c71233b"
+    },
+    "docs/evidence/c8_v65_sync_flow_final.json": {
+      "kind": "file",
+      "bytes": 70160,
+      "sha256": "e667f51e68830065aac44f71e8af54933c64bf42f38cd26ae9c66a41c35f8920"
+    },
+    "docs/evidence/e2e_c8_v65_profile_summary.json": {
+      "kind": "file",
+      "bytes": 232400,
+      "sha256": "c81bd7b70072c142a6d5560f99287bb8112955fd488a76ed2daf956a3666c21c"
+    },
+    "docs/evidence/e2e_c8_v65_summary.json": {
+      "kind": "file",
+      "bytes": 68180,
+      "sha256": "ad3f499c3ab512e62c513266fb3ea3165b643901919f5026145719e918858d5d"
+    },
+    "docs/evidence/stage1_summary.json": {
+      "kind": "file",
+      "bytes": 8286,
+      "sha256": "ed915f7287e98776935c6382ef0e1e4c0bb67480f14abfa3e9437e1149fbd8d9"
+    },
+    "docs/evidence/v65_default_delivery.json": {
+      "kind": "file",
+      "bytes": 1424,
+      "sha256": "746f618c9b74eba843bfbb9d457383d6bbdba1593a810a2eed8ae4ec4646f87e"
+    },
+    "docs/reports/v65_e2e.md": {
+      "kind": "file",
+      "bytes": 11192,
+      "sha256": "1a914563f842b9c286ef9cd085820776b860ae130f9401d0d7ef15d5f25f34d4"
+    },
+    "docs/reports/v65_kernel.md": {
+      "kind": "file",
+      "bytes": 9881,
+      "sha256": "0f05c88bf2992dca2459a70343c7c4e444dfc61ed00e7ac8d08d53d074183ce7"
+    },
+    "host/c8_launch.cpp": {
+      "kind": "file",
+      "bytes": 1870,
+      "sha256": "f71b15659db18ba7fd36b920804db8d9ae5348b67be572fc3f569236c3ed5935"
+    },
+    "host/launch.cpp": {
+      "kind": "file",
+      "bytes": 6237,
+      "sha256": "3a47db06ff43e0cb5e591d8a974aa933a243230457c54a7bb3878323e0209ddb"
+    },
+    "kernels/c8/README.md": {
+      "kind": "file",
+      "bytes": 8531,
+      "sha256": "473f997b7472dce030707d66193b1ba49d44ed615f62aac06e99237b92e62710"
+    },
+    "kernels/c8/args.h": {
+      "kind": "file",
+      "bytes": 760,
+      "sha256": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d"
+    },
+    "kernels/c8/attention_impl.h": {
+      "kind": "file",
+      "bytes": 24911,
+      "sha256": "7c7de05bc8350de26fc0d30eeb4068f549138fdbc15989cabcfc504eda4ea33c"
+    },
+    "kernels/c8/c128.cpp": {
+      "kind": "file",
+      "bytes": 4965,
+      "sha256": "7b3cf9eb0f8854f2bdb92492f673328127c94fec41c320d71421ee42068eb719"
+    },
+    "kernels/c8/c4.cpp": {
+      "kind": "file",
+      "bytes": 3317,
+      "sha256": "4b14612be0bff152416d9109bacb5759a7c6d9be9cc5d7f89c935d52ab5ae476"
+    },
+    "kernels/c8/c4_narrow.h": {
+      "kind": "file",
+      "bytes": 763,
+      "sha256": "b808c86abe8b7adaf7dde59abaa446feda6be7c60b718f8a5be7524c9685cedf"
+    },
+    "kernels/c8/c4_small.cpp": {
+      "kind": "file",
+      "bytes": 870,
+      "sha256": "ff1d4492466ec228b40bbf13604eb50fabe3c745d78a5dc7b6056a368ff5e424"
+    },
+    "kernels/c8/c4_wide.h": {
+      "kind": "file",
+      "bytes": 1560,
+      "sha256": "9c3e34930df351c4344143b677c3de615de04864b5a614d38c4c7947678fbeeb"
+    },
+    "kernels/c8/config.h": {
+      "kind": "file",
+      "bytes": 3901,
+      "sha256": "e89477f70388a4394b6c69df914708e73206b0ce2595c3fad42df2d032988bc3"
+    },
+    "kernels/c8/cube_pair.h": {
+      "kind": "file",
+      "bytes": 6624,
+      "sha256": "481eda92d8b04fef1d6c5ebdeb599747852ba2a770f50ed5dd7e691e5e0426eb"
+    },
+    "kernels/c8/gather.h": {
+      "kind": "file",
+      "bytes": 12502,
+      "sha256": "3ba15aa6708ece1d454b25c4d1bc8ec6ef82e4002716319f240a07087a5c7aea"
+    },
+    "kernels/c8/joint_softmax.h": {
+      "kind": "file",
+      "bytes": 3757,
+      "sha256": "33e84228f0e200785c242337c3cb80c3952721507c43cc09295cafa953971dea"
+    },
+    "kernels/c8/joint_tile.h": {
+      "kind": "file",
+      "bytes": 8892,
+      "sha256": "e8f5c2c5389e1cc710689f53507b8ac77c7707128d1c35fba831ebc5b4b01df6"
+    },
+    "kernels/c8/metadata.h": {
+      "kind": "file",
+      "bytes": 747,
+      "sha256": "a1e7a6b62137857fc35db7dfe639ef325672f377295a0c1e297a3c70fdf5fd6e"
+    },
+    "kernels/c8/metadata_balance.h": {
+      "kind": "file",
+      "bytes": 5252,
+      "sha256": "300e70b6e0640a7566132d0001fdcf913015aa3054414e4e47993ce4035ae259"
+    },
+    "kernels/c8/metadata_impl.h": {
+      "kind": "file",
+      "bytes": 7792,
+      "sha256": "eca8b306c81ba6f4535c7b24e78f607977067bb3516146028572eb6a934c3d05"
+    },
+    "kernels/c8/residual_quant.h": {
+      "kind": "file",
+      "bytes": 2326,
+      "sha256": "43a9d8150b194dad1964ef9c5dee48f512fc52cd25c5991757b37f295849f306"
+    },
+    "kernels/c8/schedule.h": {
+      "kind": "file",
+      "bytes": 18936,
+      "sha256": "505e7c32363c728641c280c32cc4c5c964ede162fa78ebde7270a8e858ab2e8b"
+    },
+    "kernels/c8/task_batch.h": {
+      "kind": "file",
+      "bytes": 35316,
+      "sha256": "1d21890f6d1cf3f95e1f02d9b735cea46781a3c631df929737d5299da38b6f7b"
+    },
+    "kernels/c8/task_partition.h": {
+      "kind": "file",
+      "bytes": 3591,
+      "sha256": "c3e5282b03353dd01c5236c532d896833fb85f49de6efe8fa0c96050fea772ef"
+    },
+    "kernels/c8/vector.h": {
+      "kind": "file",
+      "bytes": 41343,
+      "sha256": "d0b976bdf2f10882edc84423152f6389e092078f6ba8ffacd333456200eea2cd"
+    },
+    "kernels/c8/vector_math.h": {
+      "kind": "file",
+      "bytes": 866,
+      "sha256": "a62e0b0ea0c59639daf988efb83d0f5f513ea8f57709236adbd7a53adfc25217"
+    },
+    "kernels/cache_write.cpp": {
+      "kind": "file",
+      "bytes": 4288,
+      "sha256": "019eb5207957a109294d003d05aae96c1d8f52a81d43059a3d9495b3c910cb91"
+    },
+    "kernels/cache_write.h": {
+      "kind": "file",
+      "bytes": 242,
+      "sha256": "dfdfe9049f08d60f280723fe27bca416145ef878a93d2e9f64f30e3c68f66bd7"
+    },
+    "kernels/cube_pair_pipeline.h": {
+      "kind": "file",
+      "bytes": 6357,
+      "sha256": "2cbb115a25926cf891a510fe58c2acca8db35090a1780da45e1027a6666bd25c"
+    },
+    "kernels/residual_quant.h": {
+      "kind": "file",
+      "bytes": 1667,
+      "sha256": "c2f98234c0ed7fd84712e54ac446ee8e61a7eba256bb883dcfd023020ed7236a"
+    },
+    "kernels/row_scale_vector.h": {
+      "kind": "file",
+      "bytes": 6403,
+      "sha256": "0cc3e9bc85e3351d80f4a22981efbedf65fd3aa17085af816dad1b85d7d8277b"
+    },
+    "kernels/sharedkv.cpp": {
+      "kind": "file",
+      "bytes": 28216,
+      "sha256": "e79251632b007e626e4585d31ea105277e9b0c42730536a4c86a0233bf7875f3"
+    },
+    "kernels/sharedkv.h": {
+      "kind": "file",
+      "bytes": 696,
+      "sha256": "cfaa41f6cc7a428f8a295a927b0f8e950afd2f8b354e700acc2cb18adb08af8a"
+    },
+    "kernels/sharedkv_adaptive.cpp": {
+      "kind": "file",
+      "bytes": 259,
+      "sha256": "72e873e3ca8f0982c7a2414da2bf6bf9a21613a808f38820a49e3d8d46695390"
+    },
+    "kernels/sharedkv_config.h": {
+      "kind": "file",
+      "bytes": 3507,
+      "sha256": "18ea34ceb3909a605f94c67d31278b1a0ce5b7793bc06c8f4a9cdef0479eb7e0"
+    },
+    "kernels/sharedkv_dynamic.cpp": {
+      "kind": "file",
+      "bytes": 2021,
+      "sha256": "d06b94e6bf48030848adfd3fcc5f5294edfb04182bed34cab9717845a21866b5"
+    },
+    "kernels/sharedkv_dynamic_dense.cpp": {
+      "kind": "file",
+      "bytes": 404,
+      "sha256": "d7f1fc4d4cf6ce6e2021c166df5fee606602651655c2ef2ca6aa39094dea904a"
+    },
+    "kernels/sharedkv_dynamic_grouped.cpp": {
+      "kind": "file",
+      "bytes": 2058,
+      "sha256": "79fc0d1d6bac612fb5a5291851c4a414b6d828471b8a899246f9cceadd2aac40"
+    },
+    "kernels/sharedkv_medium.cpp": {
+      "kind": "file",
+      "bytes": 146,
+      "sha256": "7bd2f6755ba035264a36fc5e321509de7c2fc54289f1f2bae74e38d1f5f64d6b"
+    },
+    "kernels/sharedkv_packed.cpp": {
+      "kind": "file",
+      "bytes": 356,
+      "sha256": "2c1f698b6d1eb61887aa6ea541ec9f1d91c1d003610cd6da3ac03f00d44ba180"
+    },
+    "kernels/sharedkv_packed_sparse.cpp": {
+      "kind": "file",
+      "bytes": 398,
+      "sha256": "4ab19c36e6c0a8b721f0fafb1aca128323d20181450c5d8e24d98ad7f5e7b567"
+    },
+    "kernels/sharedkv_paired.cpp": {
+      "kind": "file",
+      "bytes": 325,
+      "sha256": "8d9da9a1beb0deec486d259a9151f40e5b7da03b1a6050145ad438291a7920b7"
+    },
+    "kernels/sharedkv_paired_sparse.cpp": {
+      "kind": "file",
+      "bytes": 323,
+      "sha256": "9bd7643a474d1da9d2788b376eea0af4c274f8f6579679b8962bf7b760dd380e"
+    },
+    "kernels/sharedkv_wide.cpp": {
+      "kind": "file",
+      "bytes": 284,
+      "sha256": "470f7216a039ee277c67925707f65fee49ba24a454328b1038670d2945f99aaf"
+    },
+    "kernels/sharedkv_wide_trim.cpp": {
+      "kind": "file",
+      "bytes": 322,
+      "sha256": "c99393c9eb5ead83e1358b0e22f1448133a99a5733abcacbec22b0deecb79949"
+    },
+    "kernels/sparse_gather.h": {
+      "kind": "file",
+      "bytes": 16303,
+      "sha256": "3894b19a6d1b7aa44e422eaf09e54f9ab0c4092c1c8e767f2bb4d893755e9fe7"
+    },
+    "kernels/vector_batch.h": {
+      "kind": "file",
+      "bytes": 36259,
+      "sha256": "aaa16ed5f62bd933311aef8b47d669fb87209608f169ae5719a50c55df69d8a3"
+    },
+    "kernels/vector_math.h": {
+      "kind": "file",
+      "bytes": 802,
+      "sha256": "223f4610815230b08888076f1d450a9304fde0051688f69fc6512aa0d2406af3"
+    },
+    "model_validation.py": {
+      "kind": "file",
+      "bytes": 6739,
+      "sha256": "750e518b0dc0bf008ab82eb7b21d14abc9583d451c86fa86dbc3ce378a91d9fb"
+    },
+    "pyproject.toml": {
+      "kind": "file",
+      "bytes": 488,
+      "sha256": "1f0f653b9caba8cb05100697a024468aef5dbe8bd1f7f1d5ae70b35d49d45cf8"
+    },
+    "reference.py": {
+      "kind": "file",
+      "bytes": 17811,
+      "sha256": "f0827a8d95c12df0727ae35ca68e069e3b0b72f3e4998b6e302733c2ae08c2ea"
+    },
+    "results/scales_v1.pt": {
+      "kind": "symlink",
+      "target": "../data/scales_v1.pt"
+    },
+    "runtime.py": {
+      "kind": "file",
+      "bytes": 1431,
+      "sha256": "ba583f563a885f45f15cb2922734210cf24337a9b8f990f80d855bb8e4afd743"
+    },
+    "serve_diagnostics.py": {
+      "kind": "file",
+      "bytes": 5370,
+      "sha256": "494a99645fe8d50e40ec1036cf006292f4b80ff059baa12d3ae92894bb62ecc6"
+    },
+    "tests/__init__.py": {
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tests/c8_schedule_stub/kernel_operator.h": {
+      "kind": "file",
+      "bytes": 530,
+      "sha256": "c553559a0938b0054726f51d078760cdbcf5d01b9de30c65bd8eb2aa4e6d1172"
+    },
+    "tests/fixtures/activations/metrics.jsonl": {
+      "kind": "file",
+      "bytes": 3485,
+      "sha256": "c22044ab46f75f0d2fcb3ba2b62071e458cb1b49b51f943508e40b02d8f42a02"
+    },
+    "tests/fixtures/activations/model.layers.0.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 638261,
+      "sha256": "5bb818988e2b9422abedbb60709ea178ab9e8b36e7465e63dc2a2516b244b0b2"
+    },
+    "tests/fixtures/activations/model.layers.1.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 638261,
+      "sha256": "e4e7e3a258d7286f1959843222c7e900f099683f1cc470df50bb8a1f0d131aa0"
+    },
+    "tests/fixtures/activations/model.layers.30.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 1146177,
+      "sha256": "01eb78fe6f0dd3a96b7b7ffacdec6efc6c55c638d1b46a0b6f343de85a59fde8"
+    },
+    "tests/fixtures/activations/model.layers.31.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 638273,
+      "sha256": "52ffff45fc0f225870e777bf70b2e2eac7157c2fc53cf8c68ab6ded4d7752d00"
+    },
+    "tests/fixtures/activations/model.layers.4.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 1146165,
+      "sha256": "89d725c283adf089a5ed486c33b4a33fffdd0fbe67e3388e0f837fa8ba6dbb05"
+    },
+    "tests/fixtures/activations/model.layers.57.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 638273,
+      "sha256": "c4c34cd7ad3e9a3ff169c37f84ffb289e509ffab8314e15e1e0b0fc3d2282284"
+    },
+    "tests/fixtures/activations/model.layers.58.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 1146177,
+      "sha256": "15f63716c8fec0861b5e461f0a9a4deadb7b4cd0c1f52392971149cbeccdf3a2"
+    },
+    "tests/fixtures/activations/model.layers.60.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 1146177,
+      "sha256": "e8976c0fd2b9a7ef174dbeb90c017ac13e85442d287229e7b095b8dd82f4a82f"
+    },
+    "tests/fixtures/activations/mtp.0.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 646217,
+      "sha256": "d2009d4983609e0bb56dd9933eccbc59707c7f04938b94442910075a61b277c4"
+    },
+    "tests/fixtures/activations/mtp.1.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 646217,
+      "sha256": "420a889cf44ab15d6ea39ede87be9b13dc3c4b7fb03d38eaadc4fdd60d939f7b"
+    },
+    "tests/fixtures/activations/mtp.2.self_attn.call_1.pt": {
+      "kind": "file",
+      "bytes": 646217,
+      "sha256": "ec83cfcd87955b6af24257a1158c5051f2a2cd7ff97cf59e046cee6a855b4440"
+    },
+    "tests/support/__init__.py": {
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tests/support/attention_cases.py": {
+      "kind": "file",
+      "bytes": 7536,
+      "sha256": "a4e8e46fe7712a210d4374fd5218998f7524343b1b84037f81a9316d1dc84d09"
+    },
+    "tests/support/baseline.py": {
+      "kind": "file",
+      "bytes": 2057,
+      "sha256": "2ababf42ecee6a65084cdb5bbf04d7bcc99fe11a3b21b2536830fe2163f275d3"
+    },
+    "tests/support/serving_shapes.py": {
+      "kind": "file",
+      "bytes": 5855,
+      "sha256": "0ba63132e5e692743c7dd0437091d654ef1d20f7cf9906d21f44afec2386e2d8"
+    },
+    "tests/test_adapter.py": {
+      "kind": "file",
+      "bytes": 11488,
+      "sha256": "39682fd0089813c64b3633ef3126d58531c12230cbfb543202af2da352b03fd2"
+    },
+    "tests/test_attention.py": {
+      "kind": "file",
+      "bytes": 7092,
+      "sha256": "a1c1babc0114cbbc2d84a994e3cad91e45dbde37942642e5e79b965392ae30af"
+    },
+    "tests/test_capacity.py": {
+      "kind": "file",
+      "bytes": 16415,
+      "sha256": "a8ff718a59e37e1225480086c12299c7d4f62554fa406b1f3fbc2fce20249196"
+    },
+    "tests/test_capacity_dynamic.py": {
+      "kind": "file",
+      "bytes": 8230,
+      "sha256": "a256342319746e1974b56c02ef3eef8069dbebecc09f46ed4cf8722ba445a8c5"
+    },
+    "tests/test_dynamic.py": {
+      "kind": "file",
+      "bytes": 4424,
+      "sha256": "73cfda33aa97c2f12160b45d48e0eeeaa3fd11328d9e5fc1d4a036cef47aecfe"
+    },
+    "tests/test_local_query.py": {
+      "kind": "file",
+      "bytes": 1090,
+      "sha256": "5455aba7a35ad436aa3bd983395fd3eacd4b50808be95acd0564e237cfb25f75"
+    },
+    "tests/test_metadata_views.py": {
+      "kind": "file",
+      "bytes": 3053,
+      "sha256": "3d6327f9d7d18668b15dac1e0f23a468c8eb86a59d4832065592d0d710addb64"
+    },
+    "tests/test_policy.py": {
+      "kind": "file",
+      "bytes": 2667,
+      "sha256": "eb2690771e54ff18690f34db4a951f515a3644aa87b55a7f78d8e407f56b26b5"
+    },
+    "tests/test_queue.py": {
+      "kind": "file",
+      "bytes": 4004,
+      "sha256": "3bd59d409a51f67b6ae4371eea0928a3d27ba991401077f3ad1a4cc2741f2c1b"
+    },
+    "tests/test_retained_capacity.py": {
+      "kind": "file",
+      "bytes": 2291,
+      "sha256": "30decab2bca0943011b61e456dde128eabe62374d0ad3125c61a1bbbab5a00f4"
+    },
+    "tests/test_schedule.cpp": {
+      "kind": "file",
+      "bytes": 18176,
+      "sha256": "6cb1a637c1d67e6b2fef98f7160435886f08417470febe57150ad2be9ba6706f"
+    },
+    "tests/test_sparse_edges.py": {
+      "kind": "file",
+      "bytes": 6633,
+      "sha256": "b7bea56f92ede397c13d1a36854d95a722c05f1f687a627c45107d92433af0e8"
+    },
+    "tests/test_task_batch.py": {
+      "kind": "file",
+      "bytes": 2153,
+      "sha256": "c0f190d2e7de119e865d29d014fe91aa14b86c73266b0976109dac5cbf987869"
+    },
+    "tests/test_task_batch_empty.py": {
+      "kind": "file",
+      "bytes": 576,
+      "sha256": "d349afcd47b3f08ca4167e85bffa75a1f10f7222b9a66c209e150d6e60d62b21"
+    },
+    "tests/test_task_batch_packed.py": {
+      "kind": "file",
+      "bytes": 1285,
+      "sha256": "b2bb0d1ceb1421fd996fae00701ba45a4f0711ec22769155ac1944afc5776682"
+    },
+    "tests/test_task_batch_wide.py": {
+      "kind": "file",
+      "bytes": 1165,
+      "sha256": "4395f25cb07de8d68afa1dc2f886c367f6cf111cd9faf87830ba470948d58669"
+    },
+    "tests/test_task_batch_window.py": {
+      "kind": "file",
+      "bytes": 930,
+      "sha256": "781305e2cef8406b3715552d2f7a07776d3adc317ace577f88f895ceb1b33371"
+    },
+    "tools/build_host.py": {
+      "kind": "file",
+      "bytes": 2137,
+      "sha256": "7a12a20ebc41018e2821dd76232f85f900c9acd6b03f8988bc1b02f87f7913cf"
+    },
+    "tools/check_release.py": {
+      "kind": "file",
+      "bytes": 3212,
+      "sha256": "49df32acec03e00b06955a3893870eb970a0a351eb2fc065ed4c0345d48088e2"
+    },
+    "vllm_adapter.py": {
+      "kind": "file",
+      "bytes": 13391,
+      "sha256": "482eac3a66113d0deaa367070b2ba309340e8cb6f80c01bacf627b5e0f21d730"
+    },
+    "vllm_metadata.py": {
+      "kind": "file",
+      "bytes": 2860,
+      "sha256": "b749ae0d5af1288598f85e59397cfd4e7d7e8bb147aeb93297cbcadecfa116c2"
+    },
+    "vllm_plugin.py": {
+      "kind": "file",
+      "bytes": 2738,
+      "sha256": "83527c9254bd8aca8b16e62967562dc61e3a2ab8059bda2976be1a5ef0bb5c24"
+    }
+  },
+  "binaries": {
+    "build/libsharedkv_c8.so": {
+      "kind": "file",
+      "bytes": 1209512,
+      "sha256": "3484f5fb08b26fde5b23880398cd4fd6f8980c63742fc31c428fd16cb881643e"
+    },
+    "build/libsharedkv_int8.so": {
+      "kind": "file",
+      "bytes": 1515056,
+      "sha256": "cd660affe8a4d9c96f6e2960a690209db048819de0302ed778e9ab4c8f75e6d0"
+    },
+    "build_c8_host/sharedkv_c8_host.so": {
+      "kind": "file",
+      "bytes": 195200,
+      "sha256": "f8693faffbfdc79d39172056e4fa7f5a3ec38be95456d0e39a400917b5bb5ac2"
+    },
+    "build_host/sharedkv_host.so": {
+      "kind": "file",
+      "bytes": 206304,
+      "sha256": "fae1e7d0098580225ec61bc29a0a1e6a8388ab7e8867f24e0e7960dc84c15d15"
+    }
+  },
+  "validation": "docs/evidence/stage1_summary.json",
+  "binary_portability": "Exact local artifacts; host bridges contain local RPATHs. Rebuild after relocating."
+}

@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "baseline": "v65-p101-stage1",
+  "scope": "Independent source organization; CPU compilation and verification only.",
+  "npu_tests_executed": false,
+  "npu_initialized_for_validation": false,
+  "services_changed": false,
+  "global_install_changed": false,
+  "upstream_source_check": {
+    "passed": true,
+    "files": 125
+  },
+  "import": {
+    "files": 116,
+    "unchanged_files": 93,
+    "device_sources_unchanged": 43,
+    "host_sources_unchanged": 2,
+    "device_translation_unit_order_preserved": true
+  },
+  "native_build": {
+    "passed": true,
+    "staged_library_count": 4,
+    "c8_sha256": "3484f5fb08b26fde5b23880398cd4fd6f8980c63742fc31c428fd16cb881643e",
+    "fallback_sha256": "cd660affe8a4d9c96f6e2960a690209db048819de0302ed778e9ab4c8f75e6d0",
+    "both_device_libraries_match_frozen_baseline": true,
+    "host_rpath": "$ORIGIN plus existing torch_npu dependency path",
+    "library_sha256": {
+      "libsharedkv_c8.so": "3484f5fb08b26fde5b23880398cd4fd6f8980c63742fc31c428fd16cb881643e",
+      "libsharedkv_int8.so": "cd660affe8a4d9c96f6e2960a690209db048819de0302ed778e9ab4c8f75e6d0",
+      "sharedkv_host.so": "7ffc942a22be6769cf9ce7fa504797eaeb8d83c841a3f93b92b0c3b5b64786c7",
+      "sharedkv_c8_host.so": "9c07858eede3154c069cb7cb7f18aa3e4deda67b025b494e1517da77e09151bf"
+    }
+  },
+  "python_cpu_tests": {
+    "passed": 16,
+    "failed": 0
+  },
+  "cpp_schedule_test": {
+    "passed": true,
+    "randomized_workloads": 22000,
+    "uniform_boundary_workloads": 84,
+    "uniform_cost_enumeration_max_batch": 512
+  },
+  "cpu_examples": {
+    "ratios": [
+      1,
+      4,
+      128
+    ],
+    "passed": true,
+    "relative_l2_vs_bf16": {
+      "1": 0.009435756132006645,
+      "4": 0.00890208501368761,
+      "128": 0.00930427759885788
+    }
+  },
+  "wheel": {
+    "filename": "npu_sparse_attn_sharedkv_int8-0.65.1-cp312-cp312-linux_aarch64.whl",
+    "sha256": "eb982b1f9f16b8f08d62c88069997f366b849414cf46a1c8fde9b36f1ff29635",
+    "temporary_target_install": true,
+    "source_directory_independent": true,
+    "four_native_resources_verified": true,
+    "cpu_references_passed": [
+      1,
+      4,
+      128
+    ],
+    "torch_npu_or_vllm_imported_by_smoke": false
+  },
+  "source_distribution": {
+    "status": "passed",
+    "isolated_source_integrity_check": true,
+    "no_native_binaries_or_build_cache": true,
+    "isolated_python_cpu_tests_passed": 16,
+    "isolated_cpp_schedule_test_passed": true,
+    "isolated_cpu_example_passed": true
+  },
+  "not_revalidated": [
+    "NPU arithmetic and stream/graph behavior",
+    "vLLM adapter execution",
+    "end-to-end serving",
+    "performance measurements"
+  ],
+  "additional_checks": {
+    "primary_document_links": "passed",
+    "python_syntax": "passed",
+    "shell_syntax": "passed",
+    "runtime_symlinks_to_sibling_projects": false
+  },
+  "commands": [
+    "python3 tools/check_release.py --include-build",
+    "bash tools/test_cpu.sh -q",
+    "TORCH_DEVICE_BACKEND_AUTOLOAD=0 python3 -m examples.reference_attention --ratio {1,4,128}",
+    "python3 -m pip wheel --no-deps --no-build-isolation . -w dist",
+    "python3 tools/check_distribution.py dist/npu_sparse_attn_sharedkv_int8-0.65.1-cp312-cp312-linux_aarch64.whl",
+    "python3 setup.py sdist --dist-dir dist",
+    "isolated source extraction: tools/check_release.py, tools/test_cpu.sh, examples.reference_attention"
+  ]
+}

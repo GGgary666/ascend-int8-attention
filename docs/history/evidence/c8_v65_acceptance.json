@@ -1,0 +1,53 @@
+{
+  "standalone_and_integration_pass": true,
+  "standalone_cases": 207,
+  "dynamic_states": 14,
+  "skill_precision_arrays": 66,
+  "cpu_planner_random_cases": 20000,
+  "queue_and_adapter_exit_status": 0,
+  "profile_captures": 8,
+  "runtime_sha256": {
+    "attention.py": "6ce9bcb342b11bc36a2cbae3bdb067bebdbafa4fc96119ea77705022453ce917",
+    "cache.py": "fd0fec5f68dfca7610ad9c474197eaba90ad8d8915309c5fc4df19c5f3018e80",
+    "cache_layout.py": "cff53c2d7593814122cf9fbafcd07a0af7b01f8ecfd94b1bc1bcbe4efa76e85f",
+    "runtime.py": "d2a2f37bdb1a65fce901728010f1cb085e51a4e67647db6fd061181e29de7c91",
+    "vllm_adapter.py": "7b99e098a31e5822419403e769a4bdcbc0312d2a23787f3505f15604a3cbc985",
+    "vllm_metadata.py": "b749ae0d5af1288598f85e59397cfd4e7d7e8bb147aeb93297cbcadecfa116c2",
+    "vllm_plugin.py": "83527c9254bd8aca8b16e62967562dc61e3a2ab8059bda2976be1a5ef0bb5c24",
+    "serve_diagnostics.py": "494a99645fe8d50e40ec1036cf006292f4b80ff059baa12d3ae92894bb62ecc6",
+    "c8_attention.py": "9536482885e38f48e0fa2728160ee8bb2cca5530faab4184169dcec7275c8544",
+    "host/c8_launch.cpp": "f71b15659db18ba7fd36b920804db8d9ae5348b67be572fc3f569236c3ed5935",
+    "build/libsharedkv_int8.so": "ca93e2abba9c48ab567a88048717df79a3eb86fae09cc0587b494f1b5397f335",
+    "build_host/sharedkv_host.so": "60330f7824dc0af6783e791e9c50ce7060f0b3ccb3988f462b41e643ed8aed21",
+    "build/libsharedkv_c8.so": "698a8ae6d674c70ed651d9e4edaeaa9a7c8d81dd3195b7eb0f01bb1bfbb108ca",
+    "build_c8_host/sharedkv_c8_host.so": "f8693faffbfdc79d39172056e4fa7f5a3ec38be95456d0e39a400917b5bb5ac2",
+    "results/scales_v1.pt": "2834b49b748f3b2022718a03ac215167dd1b61203f9289cf1c11e0c95b979676",
+    "kernels/c8/README.md": "206f4a37202f90168aec601d21fb585f04b9282f426f322f7e8fcd7009378926",
+    "kernels/c8/args.h": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d",
+    "kernels/c8/attention_impl.h": "7cdf3a81764b750e0487bd18e22904e5c619edc6afa5a94b8642a90700fda48b",
+    "kernels/c8/c128.cpp": "83cd60d681551d33e27e04a3f899334ee29431f5965cd0f847fb1479bdce4e99",
+    "kernels/c8/c4.cpp": "c49230711149ab8213e323df8009c80bee030eabdb74e69ec90a79c5394b8cc0",
+    "kernels/c8/c4_small.cpp": "e427c6a3bd00ce80418de216df23621baeaee37069b706003c6968ca87c4bedd",
+    "kernels/c8/c4_wide.h": "81523c2f5f89c80a7febc4b1e29ac827db9504d3c017cd5c3ace70d4ff297c66",
+    "kernels/c8/config.h": "ade413b25b6f1bc0b582a4b8e7fc20c22e3e5cccd6ae4d653d518749dc000464",
+    "kernels/c8/cube_pair.h": "8a5a2130b3bdccca38a79aa7546a7d14f870657be6f7c5b21d0541cea0625612",
+    "kernels/c8/gather.h": "3ba15aa6708ece1d454b25c4d1bc8ec6ef82e4002716319f240a07087a5c7aea",
+    "kernels/c8/residual_quant.h": "1cb674b13c8e22d6f9fbc4df15908b13d168f46f658604db402717a02a1ed453",
+    "kernels/c8/schedule.h": "07d33cbfa4f5c91a3fb70a4e65ee4564a41760b31d8a0e257de555cc6172ee9f",
+    "kernels/c8/vector.h": "e2d8938cb27302a06aba00dd2a4e9056ee4ca1839c1573c49c4bc0c6d92aa03a",
+    "kernels/c8/vector_math.h": "a62e0b0ea0c59639daf988efb83d0f5f513ea8f57709236adbd7a53adfc25217"
+  },
+  "limitations": [
+    "Raw synchronization audit candidates remain recorded; no general formal synchronization proof is claimed.",
+    "Static v64 controls are not arbitrary-live-metadata graph implementations."
+  ],
+  "post_validation_logging_fix": {
+    "old_sha256": "58c66c6e0c42dc2c64887eb84322aa1751518a6dbde2608b861d8fe748b96ebe",
+    "new_sha256": "7b99e098a31e5822419403e769a4bdcbc0312d2a23787f3505f15604a3cbc985",
+    "change": "Exactly two logger namespace replacements; no kernel/launch/timing arithmetic change",
+    "integration_log": "results/c8_v65_adapter_logger_recheck.log",
+    "integration_exit_code": 0,
+    "failed_startup": "results/e2e_c8_v65_int8",
+    "timed_requests_in_failed_startup": 0
+  }
+}

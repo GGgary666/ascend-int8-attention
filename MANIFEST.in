@@ -1,0 +1,14 @@
+include README.md CONTRIBUTING.md NOTICE.md CHANGELOG.md AGENTS.md CMakeLists.txt build.sh
+include .gitignore
+recursive-include csrc *.cpp *.h
+recursive-include npu_sparse_attn_sharedkv_int8 *.py *.pt
+recursive-include configs *.env
+recursive-include tools *.py *.sh
+recursive-include examples *.py *.sh *.md
+recursive-include benchmarks *.py *.md
+recursive-include docs *.md *.json
+recursive-include tests *.py *.cpp *.h *.pt *.jsonl
+recursive-include release *.json
+recursive-include .github *.yml
+global-exclude __pycache__ *.py[cod]
+prune npu_sparse_attn_sharedkv_int8/_native

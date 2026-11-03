@@ -1,0 +1,19 @@
+{
+  "unix_time": 1793130699.6270723,
+  "owned_processes": {
+    "node0": {
+      "e2e_c8_v65_bf16": [],
+      "e2e_c8_v65_int8": [],
+      "e2e_c8_v65_r1_int8": [],
+      "profile_e2e_c8_v65_bf16": []
+    },
+    "node1": {
+      "e2e_c8_v65_bf16": [],
+      "e2e_c8_v65_int8": [],
+      "e2e_c8_v65_r1_int8": [],
+      "profile_e2e_c8_v65_bf16": []
+    }
+  },
+  "endpoint_healthy": false,
+  "all_experiment_services_stopped": true
+}

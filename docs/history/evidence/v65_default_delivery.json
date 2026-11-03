@@ -1,0 +1,52 @@
+{
+  "created_at": "2026-10-28T02:26:52.311486+00:00",
+  "implementation": "V65 default",
+  "device_sources_unchanged": 35,
+  "device_code_equivalence": {
+    "libsharedkv_int8.so": {
+      "old_modules": 82,
+      "current_modules": 26,
+      "added": [],
+      "changed": [],
+      "removed": 56,
+      "sha256": "cd660affe8a4d9c96f6e2960a690209db048819de0302ed778e9ab4c8f75e6d0"
+    },
+    "libsharedkv_c8.so": {
+      "old_modules": 6,
+      "current_modules": 6,
+      "added": [],
+      "changed": [],
+      "removed": 0,
+      "sha256": "698a8ae6d674c70ed651d9e4edaeaa9a7c8d81dd3195b7eb0f01bb1bfbb108ca"
+    }
+  },
+  "tests": {
+    "attention": 19,
+    "dynamic_graph_states": 14,
+    "cpu_planner": 20000,
+    "queue_rebind_launches": 192,
+    "adapter_page_layouts": 2,
+    "policy": "PASS"
+  },
+  "same_address_graph_timing": {
+    "cases": 16,
+    "depth": 256,
+    "alternating_rounds": 9,
+    "median_change_pct": -0.012505516328054078,
+    "worst_change_pct": 0.3194981980845002,
+    "best_change_pct": -0.3015896004895935
+  },
+  "old_root_files": 157,
+  "current_root_files": 19,
+  "old_kernel_cpp": 80,
+  "current_kernel_cpp": 16,
+  "build": "Only 2 device targets and 2 host bridges; final repeated build reports no work",
+  "e2e_rerun": false,
+  "node1": {
+    "archive_entries": 6021,
+    "policy": "PASS",
+    "compact_adapter": "PASS",
+    "libraries_match": true,
+    "editable_version": "0.65.0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "python": "3.12.13",
+  "cann": "9.2.0",
+  "soc": "Ascend910_9382",
+  "architecture": "DAV2201",
+  "packages": {
+    "torch": {
+      "version": "2.10.0+cpu"
+    },
+    "torch-npu": {
+      "version": "2.10.0.post7"
+    },
+    "vllm": {
+      "version": "0.30.0+empty",
+      "git_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+      "tracked_modified_count": 0,
+      "api_file_sha256": {
+        "vllm/v1/core/kv_cache_utils.py": "2666c9f113584e52e7521058efd2c0d9598544559dc942d3a3da87001a3fedf2",
+        "vllm/v1/kv_cache_interface.py": "1cf202f1a44d5bc5c3832b70b41507687ecceea3784e67a4f003bc0210d6eecb"
+      }
+    },
+    "vllm-ascend": {
+      "version": "0.30.0rc2",
+      "git_commit": "8fde6d4e335fe300e2b949aab0e31659cce0811d",
+      "tracked_modified_count": 9,
+      "api_file_sha256": {
+        "vllm_ascend/attention/dsa_v1.py": "bffe1fc7c1b208099e9fad81147b17064cfc1ae52ab3315a406aabf1805ed0dc",
+        "vllm_ascend/models/deepseek_v4/dspark.py": "24ab8bc1437ff69b6f80ed0624d032da0bb182d7e281a0d6026a072e97486dba",
+        "vllm_ascend/models/layer/attention/layer.py": "3ed52f4fe52f1c3b8106da67438fcf8dfe1ec34ec5a99a88d4b590db83bc34a7",
+        "vllm_ascend/worker/model_runner_v1.py": "568c3049205b9caff5c656a7f5dd4c6e79fb358abe526f89fb9fb3f70a60a43c"
+      }
+    }
+  },
+  "npu_execution_during_organization": false
+}

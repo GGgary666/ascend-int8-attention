@@ -1,0 +1,40 @@
+{
+  "created_at": "2026-10-28T10:00:53.742797+08:00",
+  "original": "historical-artifacts/npu_sparse_attn_sharedkv_int8",
+  "archive": "historical-artifacts/npu_sparse_attn_sharedkv_int8_archive/v65_before_default_20261028T100041/npu_sparse_attn_sharedkv_int8",
+  "method": "Atomic same-filesystem directory rename; directory inode/device preserved",
+  "full_manifest": "historical-artifacts/npu_sparse_attn_sharedkv_int8_archive/v65_before_default_20261028T100041/ARCHIVE_MANIFEST.json",
+  "archive_entry_count": 60819,
+  "protected_v65_sha256": {
+    "build/libsharedkv_int8.so": "ca93e2abba9c48ab567a88048717df79a3eb86fae09cc0587b494f1b5397f335",
+    "build/libsharedkv_c8.so": "698a8ae6d674c70ed651d9e4edaeaa9a7c8d81dd3195b7eb0f01bb1bfbb108ca",
+    "host/c8_launch.cpp": "f71b15659db18ba7fd36b920804db8d9ae5348b67be572fc3f569236c3ed5935",
+    "kernels/c8/attention_impl.h": "7cdf3a81764b750e0487bd18e22904e5c619edc6afa5a94b8642a90700fda48b",
+    "kernels/c8/vector.h": "e2d8938cb27302a06aba00dd2a4e9056ee4ca1839c1573c49c4bc0c6d92aa03a",
+    "kernels/c8/config.h": "ade413b25b6f1bc0b582a4b8e7fc20c22e3e5cccd6ae4d653d518749dc000464",
+    "kernels/c8/cube_pair.h": "8a5a2130b3bdccca38a79aa7546a7d14f870657be6f7c5b21d0541cea0625612",
+    "kernels/c8/gather.h": "3ba15aa6708ece1d454b25c4d1bc8ec6ef82e4002716319f240a07087a5c7aea",
+    "kernels/c8/vector_math.h": "a62e0b0ea0c59639daf988efb83d0f5f513ea8f57709236adbd7a53adfc25217",
+    "kernels/c8/residual_quant.h": "1cb674b13c8e22d6f9fbc4df15908b13d168f46f658604db402717a02a1ed453",
+    "kernels/c8/args.h": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d",
+    "kernels/c8/schedule.h": "07d33cbfa4f5c91a3fb70a4e65ee4564a41760b31d8a0e257de555cc6172ee9f",
+    "kernels/c8/c4.cpp": "c49230711149ab8213e323df8009c80bee030eabdb74e69ec90a79c5394b8cc0",
+    "kernels/c8/c128.cpp": "83cd60d681551d33e27e04a3f899334ee29431f5965cd0f847fb1479bdce4e99",
+    "kernels/c8/c4_wide.h": "81523c2f5f89c80a7febc4b1e29ac827db9504d3c017cd5c3ace70d4ff297c66",
+    "kernels/c8/c4_small.cpp": "e427c6a3bd00ce80418de216df23621baeaee37069b706003c6968ca87c4bedd",
+    "kernels/c8/README.md": "206f4a37202f90168aec601d21fb585f04b9282f426f322f7e8fcd7009378926"
+  },
+  "restoration_note": "Restore a copy to the original path, or rebuild selected local targets: old CMake caches and host RPATHs contain the original absolute path.",
+  "stage1_cleanup": {
+    "release": "v65-p101-stage1",
+    "directory": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101",
+    "prior_instructions": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/before/AGENTS.md",
+    "prior_optimization_index": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/before/docs/OPTIMIZATION_20261029.md",
+    "historical_validation": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/before/validation",
+    "before_identity": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/before_identity.json",
+    "validation": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/validation/manifest.json",
+    "release_bundle": "historical-artifacts/npu_sparse_attn_sharedkv_int8_releases/v65-p101-stage1",
+    "method": "Copy prior documentation and rename historical validation outside the maintained tree; kernel/runtime sources are preserved"
+  },
+  "location_note": "Logical historical identifiers only; machine paths and filesystem identifiers removed. External artifacts are not included."
+}

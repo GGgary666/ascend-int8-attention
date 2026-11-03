@@ -1,0 +1,266 @@
+{
+  "suites": [
+    {
+      "suite": "original54",
+      "count": 54,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 0.7807631736605813,
+      "source": "p101serve_all.json"
+    },
+    {
+      "suite": "confirmation54",
+      "count": 54,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 1.8219013111863136,
+      "source": "p101serve_confirm_all.json"
+    },
+    {
+      "suite": "extension24",
+      "count": 24,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 2.745291411194928,
+      "source": "p101serve_extension.json"
+    },
+    {
+      "suite": "confirmation24",
+      "count": 24,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 1.4610812838479204,
+      "source": "p101serve_confirm_extension.json"
+    },
+    {
+      "suite": "edges23",
+      "count": 23,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 3.7272782517875136,
+      "source": "p101serve_edges.json"
+    },
+    {
+      "suite": "confirmation23",
+      "count": 23,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 0.46514161915769403,
+      "source": "p101serve_confirm_edges.json"
+    },
+    {
+      "suite": "window32",
+      "count": 32,
+      "bf16_over5": 0,
+      "worst_bf16_pct": 1.7799921098051286,
+      "source": "p101serve_window.json"
+    },
+    {
+      "suite": "empty30",
+      "count": 30,
+      "bf16_over5": 2,
+      "worst_bf16_pct": 16.4879618300372,
+      "source": "p101serve_empty.json"
+    },
+    {
+      "suite": "wide26",
+      "count": 26,
+      "bf16_over5": 1,
+      "worst_bf16_pct": 18.923335334900358,
+      "source": "p101serve_wide.json"
+    },
+    {
+      "suite": "retained120",
+      "count": 120,
+      "bf16_over5": 3,
+      "worst_bf16_pct": 8.99408549453742,
+      "source": "p101_completion_retained.json"
+    },
+    {
+      "suite": "local22",
+      "count": 22,
+      "bf16_over5": 2,
+      "worst_bf16_pct": 19.774955074177324,
+      "source": "p101_completion_local_query.json"
+    }
+  ],
+  "regressions": [
+    {
+      "suite": "empty30",
+      "id": "task_empty_c128_b49_s1",
+      "candidate_us": 28.383437544107437,
+      "bf16_us": 25.514688342809677,
+      "regression_pct": 11.243520448903332
+    },
+    {
+      "suite": "empty30",
+      "id": "task_empty_c128_b512_s1",
+      "candidate_us": 72.78750091791153,
+      "bf16_us": 62.484998255968094,
+      "regression_pct": 16.4879618300372
+    },
+    {
+      "suite": "wide26",
+      "id": "task_wide_c128_mixed512",
+      "candidate_us": 57.87038344603319,
+      "bf16_us": 48.66192432550284,
+      "regression_pct": 18.923335334900358
+    },
+    {
+      "suite": "retained120",
+      "id": "retained_c4_b129_mixed961",
+      "candidate_us": 129.29379528966444,
+      "bf16_us": 118.9524140851251,
+      "regression_pct": 8.693712762431893
+    },
+    {
+      "suite": "retained120",
+      "id": "retained_c128_b129_mixed897",
+      "candidate_us": 85.91931441734577,
+      "bf16_us": 80.35517561024633,
+      "regression_pct": 6.924431145652221
+    },
+    {
+      "suite": "retained120",
+      "id": "retained_c128_b129_mixed961",
+      "candidate_us": 89.49241144903775,
+      "bf16_us": 82.10758505196407,
+      "regression_pct": 8.99408549453742
+    },
+    {
+      "suite": "local22",
+      "id": "local_c128_b65_s11",
+      "candidate_us": 30.808845391640297,
+      "bf16_us": 27.292306606586163,
+      "regression_pct": 12.88472548599291
+    },
+    {
+      "suite": "local22",
+      "id": "local_c128_b97_mixed_across",
+      "candidate_us": 66.17080843126452,
+      "bf16_us": 55.24594719345505,
+      "regression_pct": 19.774955074177324
+    }
+  ],
+  "unique_cases": 331,
+  "measurement_caveat": "P0_AA_STABILITY.md",
+  "source_library_sha256": "3484f5fb08b26fde5b23880398cd4fd6f8980c63742fc31c428fd16cb881643e",
+  "release": "v65-p101-stage1",
+  "precision": {
+    "maximum_relative_l2": 0.01118176799887707,
+    "minimum_head_cosine": 0.9996586847488592
+  },
+  "raw_source_identities": [
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_all.json",
+      "sha256": "239e232f433d143ba862aad64025964e14624aebc7f3668bb96f7d1f7ed8ef88"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_extension.json",
+      "sha256": "42e8f0e041ca7c71195b277353817ffbe494ffa58b554b1cde5d0927c423f49c"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_edges.json",
+      "sha256": "2c1c7a46cd4860d8f4d839df9bdce2a7a6d4ad47b43732c980cf10eaa4128977"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_window.json",
+      "sha256": "6aa47706857305d2bd8115d564bf0d5eec60af562c4589c92ce20677d48c002d"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_empty.json",
+      "sha256": "0def064ae0e23dd8f0a6ad2db88a2cdc7e2ca4ac1b10338754537969f8fb222b"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101serve_wide.json",
+      "sha256": "0c9b824a10c86d357f3273662c64d54be7b3810ab672aa61ed16602660d35c51"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101_completion_retained.json",
+      "sha256": "1514b90c52ee92f332143fd6c8ffe9f82c2f9d30951f0dff2e97a3922afcfc24"
+    },
+    {
+      "path": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/vector_pipeline_20261029/p101_completion_local_query.json",
+      "sha256": "1eb44815346e35754621810be442aebd64d680c2e7783a10d5305694aee5c74e"
+    }
+  ],
+  "limitations": [
+    "Primary historical performance observations, not a universal latency guarantee.",
+    "Later focused runs still vary; same-binary/independent-library measurement context is unresolved.",
+    "Real-activation geometry expansion is not a full-model or end-to-end accuracy test.",
+    "Raw synchronization candidates remain unresolved; no formal synchronization proof claimed."
+  ],
+  "stage_validation": {
+    "complete": true,
+    "scope": "incremental local build, CPU and serial kernel/adapter tests; no E2E or performance matrix",
+    "manifest": "historical-artifacts/npu_sparse_attn_sharedkv_int8_experiments/stage_release_v65_p101/validation/manifest.json",
+    "manifest_sha256": "43c97b1fca2c339af37874505a3f1e60f9ac1a4c9bce79a12b4cf24ecd8382ba",
+    "checks": [
+      {
+        "name": "incremental_c8",
+        "returncode": 0,
+        "duration_s": 0.2181241512298584
+      },
+      {
+        "name": "incremental_core_host",
+        "returncode": 0,
+        "duration_s": 15.28998875617981
+      },
+      {
+        "name": "editable_install",
+        "returncode": 0,
+        "duration_s": 3.4222755432128906
+      },
+      {
+        "name": "schedule_build",
+        "returncode": 0,
+        "duration_s": 1.6703622341156006
+      },
+      {
+        "name": "schedule",
+        "returncode": 0,
+        "duration_s": 0.6671140193939209
+      },
+      {
+        "name": "policy",
+        "returncode": 0,
+        "duration_s": 7.326752185821533
+      },
+      {
+        "name": "attention",
+        "returncode": 0,
+        "duration_s": 11.483352184295654
+      },
+      {
+        "name": "dynamic",
+        "returncode": 0,
+        "duration_s": 10.681199073791504
+      },
+      {
+        "name": "queue",
+        "returncode": 0,
+        "duration_s": 7.628396034240723
+      },
+      {
+        "name": "adapter_compact",
+        "returncode": 0,
+        "duration_s": 19.743964910507202
+      },
+      {
+        "name": "adapter_capacity65",
+        "returncode": 0,
+        "duration_s": 22.7480890750885
+      },
+      {
+        "name": "metadata_views",
+        "returncode": 0,
+        "duration_s": 10.431629657745361
+      },
+      {
+        "name": "package_identity",
+        "returncode": 0,
+        "duration_s": 0.11793136596679688
+      }
+    ],
+    "attention_cases": 19,
+    "dynamic_graph_cases": 14,
+    "metadata_view_cases": 12,
+    "kernel_source_and_device_identity": "unchanged; see cleanup_identity.json",
+    "e2e_run": false,
+    "performance_matrix_rerun": false
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "scope": "Publication sanitization of historical locations and calibration provenance; numeric evidence and kernel sources retained.",
+  "calibration": {
+    "path": "npu_sparse_attn_sharedkv_int8/data/scales_v1.pt",
+    "upstream_sha256": "2834b49b748f3b2022718a03ac215167dd1b61203f9289cf1c11e0c95b979676",
+    "published_sha256": "54f6aad6582a65eb921ec65bdd103d2a1abe229c07d55c09f62440075d3d2e7c",
+    "model_identifier": "DeepSeek-V4-Pro-0813-w4a8",
+    "sanitized_fields": [
+      "provenance.model"
+    ],
+    "scale_tensor_count": 125,
+    "scale_values_sha256": "8b9012754ed1919191a844c0ed2d3519b4fdef7241f591fa02ba54da3ac5ca52",
+    "digest_format": "For each lexicographically sorted scale key: UTF-8 key, NUL byte, contiguous FP32 tensor bytes.",
+    "tensor_storage_bytes_unchanged": true,
+    "other_payload_fields_unchanged": true
+  },
+  "upstream_manifest_sha256": "3922956fb66b2006d1f135f6f09fd68d2d31ec47af1d07eea1322439b0fa07cb",
+  "npu_execution": false,
+  "services_changed": false,
+  "sanitized_history_files": [
+    "docs/history/CAPACITY.md",
+    "docs/history/DELIVERY.md",
+    "docs/history/OPTIMIZATION_20261028.md",
+    "docs/history/OPTIMIZATION_20261028_FOLLOWUP.md",
+    "docs/history/OPTIMIZATION_20261029.md",
+    "docs/history/STAGE_RELEASE.md",
+    "docs/history/archive.json",
+    "docs/history/evidence/c8_v65_summary.json",
+    "docs/history/evidence/e2e_c8_v65_profile_summary.json",
+    "docs/history/evidence/stage1_summary.json",
+    "docs/history/reports/v65_e2e.md",
+    "docs/history/reports/v65_kernel.md"
+  ]
+}

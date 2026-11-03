@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import struct
 import subprocess
 import sys
 
@@ -40,7 +41,7 @@ def test_calibration_preserves_frozen_values_after_metadata_sanitization():
     for key, scale in sorted(payload["scales"].items()):
         assert scale.dtype == torch.float32 and scale.shape == (512,)
         values.update(key.encode() + b"\0")
-        values.update(scale.contiguous().numpy().tobytes())
+        values.update(struct.pack("<512f", *scale.tolist()))
     assert values.hexdigest() == published["scale_values_sha256"]
 
 

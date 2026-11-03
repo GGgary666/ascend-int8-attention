@@ -11,7 +11,7 @@
     ],
     "scale_tensor_count": 125,
     "scale_values_sha256": "8b9012754ed1919191a844c0ed2d3519b4fdef7241f591fa02ba54da3ac5ca52",
-    "digest_format": "For each lexicographically sorted scale key: UTF-8 key, NUL byte, contiguous FP32 tensor bytes.",
+    "digest_format": "For each lexicographically sorted scale key: UTF-8 key, NUL byte, 512 IEEE FP32 values encoded in little-endian byte order.",
     "tensor_storage_bytes_unchanged": true,
     "other_payload_fields_unchanged": true
   },

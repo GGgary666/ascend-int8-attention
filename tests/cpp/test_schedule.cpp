@@ -5,7 +5,12 @@
 #include <numeric>
 #include <random>
 #include <vector>
+// Device section placement is irrelevant to this scalar-only CPU check.
+// Host GCC can reject a shared section for COMDAT templates and static helpers.
+#pragma push_macro("section")
+#define section(...)
 #include "schedule.h"
+#pragma pop_macro("section")
 bool c8_test_aiv = false;
 uint32_t c8_test_block = 0;
 bool c8_test_poison_paired_summary = false;

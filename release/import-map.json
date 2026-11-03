@@ -185,7 +185,7 @@
     },
     "tests/test_schedule.cpp": {
       "path": "tests/cpp/test_schedule.cpp",
-      "reason": "Package imports, relocated fixture path or C++ include path; test algorithm retained."
+      "reason": "Relocated C++ include path; ignore device-only section attributes in the CPU translation unit for host-compiler compatibility. Planner logic and device headers retained."
     },
     "tests/test_sparse_edges.py": {
       "path": "tests/npu/test_sparse_edges.py",

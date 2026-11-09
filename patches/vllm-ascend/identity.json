@@ -1,0 +1,101 @@
+{
+  "vllm_ascend_commit": "8fde6d4e335fe300e2b949aab0e31659cce0811d",
+  "vllm_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+  "plugin_version": "0.65.1+memcache.10",
+  "patch_sha256": "2142bfa1375a16de8e9495612682955ed3105b19d55c0b92964402cdf5120427",
+  "files": [
+    {
+      "path": "tests/ut/distributed/ascend_store/test_backend.py",
+      "before_sha256": "b9a3df616d2efef13782ab0555a3c748b1e9c8491deb1d7668166599754c82d8",
+      "after_sha256": "e454de2dcc707d945dd70a46295c6d5c2ba50b684fc687e4e913d8a9e885461c"
+    },
+    {
+      "path": "tests/ut/distributed/ascend_store/test_cache_compatibility.py",
+      "before_sha256": null,
+      "after_sha256": "927c851962776edc2d46898b6e1c3086fdb17d3777e2ab300e657991222f4824"
+    },
+    {
+      "path": "tests/ut/distributed/ascend_store/test_compact_dp_metadata.py",
+      "before_sha256": null,
+      "after_sha256": "91cc6a8064ddc769e1cf3d8e39bcf483d3d96b90ffb2e8dca608e053ce1bc0da"
+    },
+    {
+      "path": "tests/ut/distributed/ascend_store/test_compact_lookup_progress.py",
+      "before_sha256": null,
+      "after_sha256": "2361e92c06b09ac10cc016806ae009a9ac4147ea9a875ab58986dd76e6b36f98"
+    },
+    {
+      "path": "tests/ut/distributed/ascend_store/test_load_progress.py",
+      "before_sha256": null,
+      "after_sha256": "21400c51dbc87ae77ac2ae353c68ea94dc424a94ed49edfaf75a572f6bb68f27"
+    },
+    {
+      "path": "tests/ut/distributed/ascend_store/test_registered_transfer_plan.py",
+      "before_sha256": null,
+      "after_sha256": "5f9e94e499b1f998f96788bf6e3524d6e2058fec220b145896df6bf7fa283edc"
+    },
+    {
+      "path": "vllm_ascend/compilation/task_queue.py",
+      "before_sha256": null,
+      "after_sha256": "15de95e9273013bd8be47425ead11c1d5047dc4ef875d17e6d0d038421dcac0a"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py",
+      "before_sha256": "fb7cf7a296a0f405e999d8b95493b7af21712c6825dc13b4ed2801fde423dbc4",
+      "after_sha256": "ac37477a48af19892e4ac7b0861a7193a7360dec5c6ada9e0c8e5af18773b981"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py",
+      "before_sha256": "cf2d7a1ccf488b28dc6a4ae1416e694c348837d7786ece20f0522cafdfc3cd92",
+      "after_sha256": "fed9da1422c055ddf21010d4c540586c9d51b735d7cf724bd19a01d46574bdbc"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/cache_compatibility.py",
+      "before_sha256": null,
+      "after_sha256": "83ad97b4fc6569d034d52cbe876b4c48a7db7392f53add09dd032c591220f892"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py",
+      "before_sha256": "c7af0a052e1cbada0b300b6872585ffeafe159fb355b73547c0ccc34755fe67b",
+      "after_sha256": "5c662b5c5b54da650767b13ec75af1a731eb047b16465cfbb163c097a4465f89"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py",
+      "before_sha256": "32930f236b360f90d202610faa44699757fca669347ff5efa386adb9ddc4d156",
+      "after_sha256": "5c0f918101db930a096d07d818eaa768200ec96175e55f98d26d6863249391b3"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py",
+      "before_sha256": "521626e80978c040d67c0579d0ef2d1b6d643dd48d67bf5742b261de4446a97d",
+      "after_sha256": "335f1602ddf504859b8f64300b0f24fb579b865f7f7d74efcaf27a062a8471fc"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py",
+      "before_sha256": "b57b77725787f04cf47916e520c58f31fb1ef6ce3addb8a8855d81cbe0026984",
+      "after_sha256": "c39c351edd91523a40e8e57a55ed6904b1f90e574c74106772f8c585db816dca"
+    },
+    {
+      "path": "vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py",
+      "before_sha256": "3d39b85efa8afb750abc179a030a82d2309fd7b0770eb9fcc0da073af0c141ff",
+      "after_sha256": "0f077813cc2511a4728376a2094a7a34c4de1496bec8053bd9a8888266b3ce34"
+    },
+    {
+      "path": "vllm_ascend/patch/platform/patch_compact_load_progress.py",
+      "before_sha256": null,
+      "after_sha256": "79730f33591b6c0249ee4d98503ba4e8afc3c3ce3ce43775e17c14ba9e0f242b"
+    },
+    {
+      "path": "vllm_ascend/worker/compact_dp_metadata.py",
+      "before_sha256": null,
+      "after_sha256": "1d6e8e767cf549a7e13f1cc4ae369c49cb00070b5dd036491af9f81d63034d6e"
+    },
+    {
+      "path": "vllm_ascend/worker/model_runner_v1.py",
+      "before_sha256": "568c3049205b9caff5c656a7f5dd4c6e79fb358abe526f89fb9fb3f70a60a43c",
+      "after_sha256": "490ecc0da63460343629de7652ca3fec31ab9ffce84748f0b86c1ecc4663367c"
+    }
+  ],
+  "all_patch_inputs_match_clean_upstream_commit": true,
+  "native_sources_modified": false,
+  "baseline_local_changes_excluded": true
+}

@@ -1,0 +1,994 @@
+{
+  "selected": [
+    "strict compact protocol and receive barrier",
+    "DP metadata relay",
+    "redundant SAS metadata elision",
+    "zero-token receive progress",
+    "registered full-block transfer plans",
+    "task queue 2 with capture helper",
+    "static/Super compiler configuration"
+  ],
+  "rejected": [
+    "early eager shared MLP",
+    "optional MC2 and FlashComm experiments"
+  ],
+  "profile_scope": {
+    "prefill_tables_valid": true,
+    "graph_kernel_scope": [
+      {
+        "label": "cold-dp0-warmed",
+        "tp_rank": 2,
+        "graph_spans": 79,
+        "graphs_with_named_model_kernels": 79,
+        "model_kernel_counts": [
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006,
+          3006
+        ],
+        "model_ids": {
+          "48": 237474
+        },
+        "eager_rows_inside_spans": 14504,
+        "graph_kernel_coverage_complete": true,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      },
+      {
+        "label": "cold-dp1-warmed",
+        "tp_rank": 2,
+        "graph_spans": 79,
+        "graphs_with_named_model_kernels": 0,
+        "model_kernel_counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "model_ids": {},
+        "eager_rows_inside_spans": 42,
+        "graph_kernel_coverage_complete": false,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      },
+      {
+        "label": "hit-dp0-warmed",
+        "tp_rank": 2,
+        "graph_spans": 95,
+        "graphs_with_named_model_kernels": 0,
+        "model_kernel_counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "model_ids": {},
+        "eager_rows_inside_spans": 63,
+        "graph_kernel_coverage_complete": false,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      },
+      {
+        "label": "bf16-cold-dp0-warmed",
+        "tp_rank": 2,
+        "graph_spans": 79,
+        "graphs_with_named_model_kernels": 79,
+        "model_kernel_counts": [
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189,
+          3189
+        ],
+        "model_ids": {
+          "48": 251931
+        },
+        "eager_rows_inside_spans": 49,
+        "graph_kernel_coverage_complete": true,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      },
+      {
+        "label": "bf16-cold-dp1-warmed",
+        "tp_rank": 2,
+        "graph_spans": 95,
+        "graphs_with_named_model_kernels": 0,
+        "model_kernel_counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "model_ids": {},
+        "eager_rows_inside_spans": 116,
+        "graph_kernel_coverage_complete": false,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      },
+      {
+        "label": "bf16-hit-dp0-warmed",
+        "tp_rank": 2,
+        "graph_spans": 95,
+        "graphs_with_named_model_kernels": 0,
+        "model_kernel_counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "model_ids": {},
+        "eager_rows_inside_spans": 145,
+        "graph_kernel_coverage_complete": false,
+        "scope": "This only tests named model-kernel coverage. Runtime graph start/end spans may remain present when the repeated dynamic capture lacks graph operator metadata. Incomplete captures must not be used for graph operator breakdown."
+      }
+    ],
+    "complete_runtime_graph_spans": true,
+    "limitation": "Subsequent dynamic captures have no named graph model kernels in exported op tables, despite intact runtime graph spans. Their eager prefill has complete 216 anchors/61 attention ops. Use only the first cold-DP0 capture per variant for graph-operator breakdown; later graph start/end spans are timing scope only. No claimed cause for missing graph metadata."
+  },
+  "matched_profile": {
+    "passed": true,
+    "timing_acceptance": false,
+    "matched_input_and_tail": true,
+    "records": [
+      {
+        "suffix": "single",
+        "phase": "cold_single",
+        "rank": 0,
+        "tail_tokens": 1093,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-cold_single-tp0.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-cold_single-tp0.json",
+        "prefill": {
+          "int8_ms": 691.27025,
+          "bf16_ms": 682.8745,
+          "ratio": 1.0122947188685476
+        },
+        "graph": {
+          "int8_ms": 64.62,
+          "bf16_ms": 60.93125,
+          "ratio": 1.0605395425171813
+        },
+        "launch_interval": {
+          "int8_ms": 73.459875,
+          "bf16_ms": 71.124125
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          },
+          "bf16": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          }
+        }
+      },
+      {
+        "suffix": "single",
+        "phase": "cold_single",
+        "rank": 2,
+        "tail_tokens": 1093,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-cold_single-tp2.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-cold_single-tp2.json",
+        "prefill": {
+          "int8_ms": 691.39625,
+          "bf16_ms": 682.8285,
+          "ratio": 1.0125474405359471
+        },
+        "graph": {
+          "int8_ms": 64.643,
+          "bf16_ms": 61.35425,
+          "ratio": 1.0536026436636419
+        },
+        "launch_interval": {
+          "int8_ms": 73.512875,
+          "bf16_ms": 71.10725
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          },
+          "bf16": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          }
+        }
+      },
+      {
+        "suffix": "single",
+        "phase": "cold_single",
+        "rank": 15,
+        "tail_tokens": 1093,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-cold_single-tp15.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-cold_single-tp15.json",
+        "prefill": {
+          "int8_ms": 691.187,
+          "bf16_ms": 683.131,
+          "ratio": 1.0117927601001857
+        },
+        "graph": {
+          "int8_ms": 64.28975,
+          "bf16_ms": 60.53575,
+          "ratio": 1.0620129427652254
+        },
+        "launch_interval": {
+          "int8_ms": 73.416125,
+          "bf16_ms": 71.199
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          },
+          "bf16": {
+            "get_calls": 0.0,
+            "mean_get_ms_per_worker": 0,
+            "total_get_bytes": 0.0
+          }
+        }
+      },
+      {
+        "suffix": "single",
+        "phase": "remote_hit_single",
+        "rank": 0,
+        "tail_tokens": 581,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-remote_hit_single-tp0.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-remote_hit_single-tp0.json",
+        "prefill": {
+          "int8_ms": 708.682,
+          "bf16_ms": 801.43025,
+          "ratio": 0.884271588201219
+        },
+        "graph": {
+          "int8_ms": 65.495125,
+          "bf16_ms": 61.83275,
+          "ratio": 1.059230343143399
+        },
+        "launch_interval": {
+          "int8_ms": 74.37825,
+          "bf16_ms": 71.643125
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 13.620121462736279,
+            "total_get_bytes": 1013841920.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 14.69733245903626,
+            "total_get_bytes": 1600520192.0
+          }
+        }
+      },
+      {
+        "suffix": "single",
+        "phase": "remote_hit_single",
+        "rank": 2,
+        "tail_tokens": 581,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-remote_hit_single-tp2.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-remote_hit_single-tp2.json",
+        "prefill": {
+          "int8_ms": 708.704,
+          "bf16_ms": 802.18925,
+          "ratio": 0.8834623500626566
+        },
+        "graph": {
+          "int8_ms": 64.9915,
+          "bf16_ms": 61.57275,
+          "ratio": 1.055523750360346
+        },
+        "launch_interval": {
+          "int8_ms": 74.263,
+          "bf16_ms": 71.8625
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 13.620121462736279,
+            "total_get_bytes": 1013841920.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 14.69733245903626,
+            "total_get_bytes": 1600520192.0
+          }
+        }
+      },
+      {
+        "suffix": "single",
+        "phase": "remote_hit_single",
+        "rank": 15,
+        "tail_tokens": 581,
+        "int8_source": "profiles/int8-static-super-single/actual-kernels-remote_hit_single-tp15.json",
+        "bf16_source": "profiles/bf16-static-super-single/actual-kernels-remote_hit_single-tp15.json",
+        "prefill": {
+          "int8_ms": 710.07,
+          "bf16_ms": 802.21525,
+          "ratio": 0.8851365017057454
+        },
+        "graph": {
+          "int8_ms": 64.161875,
+          "bf16_ms": 61.85425,
+          "ratio": 1.0373074606837849
+        },
+        "launch_interval": {
+          "int8_ms": 74.14775,
+          "bf16_ms": 71.8665
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 13.620121462736279,
+            "total_get_bytes": 1013841920.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 14.69733245903626,
+            "total_get_bytes": 1600520192.0
+          }
+        }
+      },
+      {
+        "suffix": "32k",
+        "phase": "remote_hit_single",
+        "rank": 0,
+        "tail_tokens": 69,
+        "int8_source": "profiles/int8-static-super-32k/actual-kernels-remote_hit_single-tp0.json",
+        "bf16_source": "profiles/bf16-static-super-32k/actual-kernels-remote_hit_single-tp0.json",
+        "prefill": {
+          "int8_ms": 681.287,
+          "bf16_ms": 761.851,
+          "ratio": 0.8942522881770845
+        },
+        "graph": {
+          "int8_ms": 64.968125,
+          "bf16_ms": 62.67875,
+          "ratio": 1.036525536964282
+        },
+        "launch_interval": {
+          "int8_ms": 73.865,
+          "bf16_ms": 73.303625
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 45.6280906801112,
+            "total_get_bytes": 2955935744.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 47.273614909499884,
+            "total_get_bytes": 5101322240.0
+          }
+        }
+      },
+      {
+        "suffix": "32k",
+        "phase": "remote_hit_single",
+        "rank": 2,
+        "tail_tokens": 69,
+        "int8_source": "profiles/int8-static-super-32k/actual-kernels-remote_hit_single-tp2.json",
+        "bf16_source": "profiles/bf16-static-super-32k/actual-kernels-remote_hit_single-tp2.json",
+        "prefill": {
+          "int8_ms": 681.35125,
+          "bf16_ms": 761.22825,
+          "ratio": 0.8950682663182823
+        },
+        "graph": {
+          "int8_ms": 65.033375,
+          "bf16_ms": 63.367,
+          "ratio": 1.0262972051698835
+        },
+        "launch_interval": {
+          "int8_ms": 74.17675,
+          "bf16_ms": 73.20375
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 45.6280906801112,
+            "total_get_bytes": 2955935744.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 47.273614909499884,
+            "total_get_bytes": 5101322240.0
+          }
+        }
+      },
+      {
+        "suffix": "32k",
+        "phase": "remote_hit_single",
+        "rank": 15,
+        "tail_tokens": 69,
+        "int8_source": "profiles/int8-static-super-32k/actual-kernels-remote_hit_single-tp15.json",
+        "bf16_source": "profiles/bf16-static-super-32k/actual-kernels-remote_hit_single-tp15.json",
+        "prefill": {
+          "int8_ms": 681.50875,
+          "bf16_ms": 762.23175,
+          "ratio": 0.8940965132979569
+        },
+        "graph": {
+          "int8_ms": 64.5055,
+          "bf16_ms": 63.341,
+          "ratio": 1.0183846165990431
+        },
+        "launch_interval": {
+          "int8_ms": 73.9265,
+          "bf16_ms": 73.317375
+        },
+        "generated_kernel_names": {
+          "int8": 468,
+          "bf16": 467
+        },
+        "connector_metrics": {
+          "int8": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 45.6280906801112,
+            "total_get_bytes": 2955935744.0
+          },
+          "bf16": {
+            "get_calls": 16.0,
+            "mean_get_ms_per_worker": 47.273614909499884,
+            "total_get_bytes": 5101322240.0
+          }
+        }
+      }
+    ],
+    "interpretation": "Same full input, cached prefix and output count. Graph spans and prefill windows include profiling overhead. Operation durations overlap and cannot be added to explain request latency. GET values are means over TP workers, not a critical path. No attribution to arbitrary unavailable Python/FX traces."
+  },
+  "early_shared_causal_limits": "Median per-layer branch spans barely change, and decode graph spans also differ despite the eager-only intended change. Super Kernel timing differences are not attributed to early scheduling. Only the unprofiled full matrix and supplemental repeats determine performance.",
+  "performance_acceptance": false,
+  "fixed_matrix_source": {
+    "name": "results/int8-registered-plan-vs-bf16-static-super-warm-review.json",
+    "sha256": "64374cb38322b1b6672c3b43205951656ff3f0f7b969af57e24ff66d6597ec02"
+  },
+  "records": [
+    {
+      "name": "validation/native-profile-coverage.json",
+      "sha256": "c8cb8f3d3502bc2d77472b84b47a50730bd8f7ac7ad5e22bf0cc1673ad43125a"
+    },
+    {
+      "name": "validation/matched-static-super-profile-review.json",
+      "sha256": "af95815f4a3224f46bc84fb9717e67b2c9140ea9f8144a1eb05d850c76cd6030"
+    },
+    {
+      "name": "validation/early-shared-profile-decision.json",
+      "sha256": "bd63f79f1e9f16dbd34ec1c9609cbe4ec291198ede63db6a97c04fd2d49753bb"
+    },
+    {
+      "name": "validation/early-shared-performance-review.json",
+      "sha256": "1b2f70e342f975fe9c514a894bc8c8736108261d6bda9edb58c13ce98bd40c80"
+    }
+  ]
+}

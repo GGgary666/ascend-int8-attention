@@ -6,9 +6,13 @@
 默认检查在 CPU 上执行：
 
 ```bash
+python3 -m pip install --no-build-isolation -e '.[test,benchmark]'
 bash tools/test_cpu.sh
 python3 tools/check_release.py
 ```
+
+`benchmark` 额外依赖用于本地 mock HTTP 回放契约测试，不需要 NPU 或真实服务。
+CI 安装这些依赖，避免将回放顺序和失败路径测试因缺少依赖而跳过。
 
 `tests/npu/`、benchmark 和 vLLM 启动均需要显式安排空闲设备。用户正在使用 NPU
 进行其他测试时，不执行这些入口，不运行 import 后即访问设备的脚本。

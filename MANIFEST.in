@@ -12,3 +12,6 @@ recursive-include release *.json
 recursive-include .github *.yml
 global-exclude __pycache__ *.py[cod]
 prune npu_sparse_attn_sharedkv_int8/_native
+
+recursive-include patches *.patch *.json *.md
+recursive-include release *.csv

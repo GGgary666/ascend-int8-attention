@@ -1,0 +1,542 @@
+{
+  "package_version": "0.65.1+memcache.10",
+  "algorithm": "v65-p101-stage1",
+  "encoding": "sharedkv-c8-v1",
+  "runtime_packages": {
+    "torch": "2.10.0+cpu",
+    "torch_npu": "2.10.0.post7",
+    "vllm": "0.30.0+empty",
+    "vllm-ascend": "0.30.0rc2",
+    "memcache-hybrid": "1.3.0",
+    "memfabric-hybrid": "1.3.0",
+    "npu-sparse-attn-sharedkv-int8": "0.65.1+memcache.10"
+  },
+  "framework_commit": "8fde6d4e335fe300e2b949aab0e31659cce0811d",
+  "vllm_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+  "optimization_closed": true,
+  "selected": "registered full-block transfer plans",
+  "end_to_end_all_scenarios_non_regression_passed": false,
+  "plugin_cpu_tests": 36,
+  "framework_cpu_tests": 832,
+  "inherited_framework_skips": 12,
+  "native_source_files_preserved": 45,
+  "upstream_manifest_preserved": true,
+  "actual_hbm": {
+    "int8": [
+      {
+        "dp_rank": 0,
+        "available_kv_gib": [
+          17.43
+        ],
+        "blocks_per_worker": [
+          30053
+        ]
+      },
+      {
+        "dp_rank": 1,
+        "available_kv_gib": [
+          17.43
+        ],
+        "blocks_per_worker": [
+          30053
+        ]
+      }
+    ],
+    "bf16": [
+      {
+        "dp_rank": 0,
+        "available_kv_gib": [
+          17.42
+        ],
+        "blocks_per_worker": [
+          14900
+        ]
+      },
+      {
+        "dp_rank": 1,
+        "available_kv_gib": [
+          17.43
+        ],
+        "blocks_per_worker": [
+          14902
+        ]
+      }
+    ]
+  },
+  "cpp_scheduling": "22000 randomized workloads, 84 uniform/boundary workloads, cost enumeration through B512",
+  "model_workers": 32,
+  "token_checks": {
+    "total": 27,
+    "stable": 18,
+    "independently_observed_variants": 9,
+    "full_token_and_finish_reason": true
+  },
+  "model_lifecycle": {
+    "passed": true,
+    "experimental_version": "0.65.1+memcache.10-registered-plan",
+    "formal_version_unchanged": "0.65.1+memcache.10",
+    "model_logical_components": 276,
+    "model_payload_bytes": 3803008,
+    "model_producer_workers": 16,
+    "model_consumer_workers": 16,
+    "retained_wire_segments": 125,
+    "delayed_put_cases": 124,
+    "cancel_wait": true,
+    "get_faults": 5,
+    "put_failure": true,
+    "instrumented_first_get": true,
+    "uninstrumented_first_get": true,
+    "native_workers": 32,
+    "performance_acceptance": false
+  },
+  "portable_npu": {
+    "passed": true,
+    "components": 276,
+    "transfer_segments": 125,
+    "groups": 7,
+    "selected_object_payload_bytes": 3803008,
+    "put_get_combinations": [
+      {
+        "merged_put": false,
+        "merged_get": false,
+        "whole_backing_sha256": "eb301b2235a34b6594333cf5953fd1a7c8eccdc97e36170e2273c50590487a6d",
+        "streams": true,
+        "graph_replay": true
+      },
+      {
+        "merged_put": false,
+        "merged_get": true,
+        "whole_backing_sha256": "eb301b2235a34b6594333cf5953fd1a7c8eccdc97e36170e2273c50590487a6d",
+        "streams": true,
+        "graph_replay": true
+      },
+      {
+        "merged_put": true,
+        "merged_get": false,
+        "whole_backing_sha256": "eb301b2235a34b6594333cf5953fd1a7c8eccdc97e36170e2273c50590487a6d",
+        "streams": true,
+        "graph_replay": true
+      },
+      {
+        "merged_put": true,
+        "merged_get": true,
+        "whole_backing_sha256": "eb301b2235a34b6594333cf5953fd1a7c8eccdc97e36170e2273c50590487a6d",
+        "streams": true,
+        "graph_replay": true
+      }
+    ],
+    "immediate_attention": [
+      {
+        "ratio": 1,
+        "mode": "auxiliary",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 81920
+      },
+      {
+        "ratio": 1,
+        "mode": "graph",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 81920
+      },
+      {
+        "ratio": 4,
+        "mode": "auxiliary",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 212992
+      },
+      {
+        "ratio": 4,
+        "mode": "graph",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 212992
+      },
+      {
+        "ratio": 128,
+        "mode": "auxiliary",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 98304
+      },
+      {
+        "ratio": 128,
+        "mode": "graph",
+        "passed": true,
+        "no_intervening_readback": true,
+        "payload": 98304
+      }
+    ],
+    "first_get_without_prior_put": true,
+    "host_queue": 1,
+    "task_queue": 2
+  },
+  "pool_restart": {
+    "passed": true,
+    "first_get_before_any_put": true,
+    "cached_tokens": 8192,
+    "original_failed_attempt_preserved": true,
+    "finite_test_pool_lifetime_removed": true
+  },
+  "capacity": {
+    "passed": true,
+    "pool_gib_each": 256,
+    "producer_requests": 204,
+    "exact_cross_dp_tokens": 6,
+    "independently_observed_cross_dp_variants": 0,
+    "io_delta": {
+      "vllm:ascend_store_get_success_bytes_total": 62403772416.0,
+      "vllm:ascend_store_get_success_keys_total": 102432.0,
+      "vllm:ascend_store_get_failed_bytes_total": 0.0,
+      "vllm:ascend_store_get_failed_keys_total": 0.0,
+      "vllm:ascend_store_put_success_bytes_total": 279202873344.0,
+      "vllm:ascend_store_put_success_keys_total": 499188.0,
+      "vllm:ascend_store_put_failed_bytes_total": 0.0,
+      "vllm:ascend_store_put_failed_keys_total": 0.0,
+      "vllm:ascend_store_load_get_keys_total": 102432.0,
+      "vllm:ascend_store_delayed_release_requests": 0.0,
+      "vllm:ascend_store_delayed_release_blocks": 0.0,
+      "vllm:ascend_store_load_get_duration_seconds_sum": 15.247837419621646,
+      "vllm:ascend_store_load_get_duration_seconds_bucket": 1056.0,
+      "vllm:ascend_store_load_get_duration_seconds_count": 96.0
+    },
+    "stages": [
+      {
+        "target_gib": 32,
+        "elapsed_seconds": 761.8382798498496,
+        "pools": [
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 35610279936,
+            "payload_bytes": 35553956352,
+            "allocation_padding_bytes": 56323584
+          },
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 35671326720,
+            "payload_bytes": 35615403520,
+            "allocation_padding_bytes": 55923200
+          }
+        ]
+      },
+      {
+        "target_gib": 64,
+        "elapsed_seconds": 1523.8026367295533,
+        "pools": [
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 71383764992,
+            "payload_bytes": 71271106944,
+            "allocation_padding_bytes": 112658048
+          },
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 71179448320,
+            "payload_bytes": 71067612800,
+            "allocation_padding_bytes": 111835520
+          }
+        ]
+      },
+      {
+        "target_gib": 128,
+        "elapsed_seconds": 2976.5916938222945,
+        "pools": [
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 139916132352,
+            "payload_bytes": 139695425024,
+            "allocation_padding_bytes": 220707328
+          },
+          {
+            "total_bytes": 274877906944,
+            "actual_used_bytes": 139727093760,
+            "payload_bytes": 139507448320,
+            "allocation_padding_bytes": 219645440
+          }
+        ]
+      }
+    ]
+  },
+  "restoration": {
+    "passed": true,
+    "exact_original_command_environment_cwd": true,
+    "both_dp_real_requests_passed": true,
+    "test_pools_and_meta_released": true
+  },
+  "limitations": [
+    "Per-scenario TTFT/TPOT/throughput non-regression is not satisfied.",
+    "The clean upstream framework patch passed CPU checks; NPU execution used the validated local native build.",
+    "Pressure prompts are frozen reconstructions, not the truncated original full text.",
+    "Historical no-MemCache results use a different framework/compiler configuration.",
+    "The 3,803,008-byte object subset is not the full 8K prefix transfer size."
+  ],
+  "evidence": [
+    {
+      "name": "validation/final-selection.json",
+      "sha256": "e3999f30beaba193dea019d1d6bf6c03254927ee3269f009785cda9309e777d8"
+    },
+    {
+      "name": "validation/registered-plan-retry1-lifecycle.json",
+      "sha256": "82b0dd9ebc8f07b9fe068ca1e7193f5029d14ed641a0c1522ade38ffa7e6fe66"
+    },
+    {
+      "name": "validation/public-npu-acceptance.json",
+      "sha256": "0a6be985dc3b55bba0f72f6363baf2e04aad0906ce82a42d16600345323b5428"
+    },
+    {
+      "name": "validation/closeout-final-token-equivalence.json",
+      "sha256": "ef480e8d81baedb1f3354ddd9c3790b2238c09fad337383bc9ed7db6bc1122d3"
+    },
+    {
+      "name": "validation/closeout-final-worker-audits/inventory.json",
+      "sha256": "00ee9d5499bb299d2aa3010078a31de88020ce984a8826fdda7c8fe177e4e7f0"
+    },
+    {
+      "name": "validation/final-capacity-acceptance.json",
+      "sha256": "c5faf29f875ceac32b181b3aa4dd8568341596e8ea9f87f2dbb39da3fd750552"
+    },
+    {
+      "name": "validation/pool-expiry-incident.json",
+      "sha256": "80439a2ff016d18981e62c25393d3564459a16c9e07c4b39552f1c86ba940df5"
+    },
+    {
+      "name": "validation/pool-expiry-recovery.json",
+      "sha256": "85565d6576d13bb029b230f47ca66751d68a8e4f36de83d175dac8e2fb5099af"
+    },
+    {
+      "name": "validation/closeout-pool-recovery-first-get.json",
+      "sha256": "83d64b8206116b6afd901c0832d167f8029d933148ad181a396edd54958102fb"
+    },
+    {
+      "name": "validation/restoration.json",
+      "sha256": "b389e09fdb305bdec1293ee5c8b743d85045e596aa8f2affc8f48f5e14859fcd"
+    },
+    {
+      "name": "validation/publication-patch-roundtrip.json",
+      "sha256": "0d788dfa8f6cc0630655e70326dd3c8bca4cc1b7c2aa40e12cef19c21b1146ec"
+    },
+    {
+      "name": "validation/pre-publication-source-preservation.json",
+      "sha256": "b52d1655a1929dec8cb102799dcb4c0e54ba4a5b1508e84695ab21e8c05366df"
+    },
+    {
+      "name": "results/closeout-publication-cpu.log",
+      "sha256": "5a867d7ab2368d42e2e7d08c52b03d223d11dc01daf227c9ea1c84bf943ec7d9"
+    },
+    {
+      "name": "results/closeout-clean-framework-cpu.log",
+      "sha256": "22a4d034081e290db42221a4709a0d4e6e8f573183d0dc14062f177815d6b4bd"
+    },
+    {
+      "name": "results/closeout-final-hbm-capacity.json",
+      "sha256": "5073c21aec25a6604e327d4d32659c2418576dfd4a4608794cc3bac7630387e0"
+    },
+    {
+      "name": "results/closeout-bf16-hbm-capacity.json",
+      "sha256": "6e5cfae5a5d30ad9a4106d8c537f6e2f1eb5ad91d17efbff01b44d43717c36d5"
+    }
+  ],
+  "published": false,
+  "matched_scenario_transfer_bytes": [
+    {
+      "scenario": "1024/1/cold",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    },
+    {
+      "scenario": "8704/1/cold",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 436592640.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 646144000.0
+        }
+      }
+    },
+    {
+      "scenario": "8704/1/remote_hit",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 5069209600.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 8002600960.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    },
+    {
+      "scenario": "32768/1/cold",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 1762099200.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 2616033280.0
+        }
+      }
+    },
+    {
+      "scenario": "32768/1/remote_hit",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 14779678720.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 25506611200.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    },
+    {
+      "scenario": "130000/1/cold",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 6843207680.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 10167275520.0
+        }
+      }
+    },
+    {
+      "scenario": "130000/1/remote_hit",
+      "requests": 5,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 52003143680.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 92605317120.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    },
+    {
+      "scenario": "8704/4/cold",
+      "requests": 12,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 1047822336.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 1550745600.0
+        }
+      }
+    },
+    {
+      "scenario": "8704/4/remote_hit",
+      "requests": 12,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 12166103040.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 19206242304.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    },
+    {
+      "scenario": "32768/4/cold",
+      "requests": 12,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 4229038080.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 0.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 6278479872.0
+        }
+      }
+    },
+    {
+      "scenario": "32768/4/remote_hit",
+      "requests": 12,
+      "io_bytes": {
+        "candidate": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 35471228928.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        },
+        "baseline": {
+          "vllm:ascend_store_get_failed_bytes_total": 0.0,
+          "vllm:ascend_store_get_success_bytes_total": 61215866880.0,
+          "vllm:ascend_store_put_failed_bytes_total": 0.0,
+          "vllm:ascend_store_put_success_bytes_total": 0.0
+        }
+      }
+    }
+  ]
+}

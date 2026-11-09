@@ -9,3 +9,8 @@ dist/
 validation/
 benchmark-results/
 npu_sparse_attn_sharedkv_int8/_native/
+
+/deployment/
+*.private.json
+PROF_*/
+*.pt.trace.json

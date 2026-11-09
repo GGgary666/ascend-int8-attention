@@ -1,6 +1,6 @@
 # Maintained baseline
 
-This is the standalone organization of v65-p101-stage1, package 0.65.1.
+This is the standalone organization of v65-p101-stage1, package 0.65.1+memcache.10. The p101 device baseline remains unchanged.
 Read README.md, docs/architecture.md and docs/validation.md before changing it.
 
 - Default checks are CPU-only. Run NPU regression or serving only for an
@@ -18,3 +18,6 @@ Read README.md, docs/architecture.md and docs/validation.md before changing it.
 - release/upstream-v65-p101.json is immutable. It is not the reorganized tree's
   manifest. Do not regenerate it to accept an unintended change.
 - Never rebuild or replace libraries used by an active service.
+
+- MemCache integration requires the paired patch and generated compatibility manifest.
+- Keep pressure datasets, private deployment snapshots, profiles and machine paths outside the repository.

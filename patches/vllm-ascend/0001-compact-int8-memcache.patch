@@ -1,0 +1,2820 @@
+diff --git a/tests/ut/distributed/ascend_store/test_backend.py b/tests/ut/distributed/ascend_store/test_backend.py
+--- a/tests/ut/distributed/ascend_store/test_backend.py
++++ b/tests/ut/distributed/ascend_store/test_backend.py
+@@ -19,6 +19,7 @@
+ import os
+ import sys
+ import tempfile
++import threading
+ import unittest
+ from contextlib import ExitStack
+ from types import SimpleNamespace
+@@ -1330,6 +1331,8 @@
+ 
+         with patch.object(MemcacheBackend, "__init__", lambda self, pc: None):
+             backend = MemcacheBackend.__new__(MemcacheBackend)
++            backend._transfer_stats = {}
++            backend._transfer_stats_lock = threading.Lock()
+             backend.store = MagicMock()
+             backend.device_id = 0
+             backend._dp_init_barrier = False
+diff --git a/tests/ut/distributed/ascend_store/test_cache_compatibility.py b/tests/ut/distributed/ascend_store/test_cache_compatibility.py
+new file mode 100644
+--- /dev/null
++++ b/tests/ut/distributed/ascend_store/test_cache_compatibility.py
+@@ -0,0 +1,267 @@
++"""CPU contracts for persistent compact KV objects and receive barriers."""
++
++import json
++from dataclasses import dataclass, replace
++from types import SimpleNamespace as NS
++from unittest.mock import MagicMock, patch
++
++import pytest
++import torch
++
++import tests.ut.distributed.ascend_store._mock_deps  # noqa: F401
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store import cache_compatibility as contract
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend.memcache_backend import MemcacheBackend
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.metadata import ChunkedTokenDatabase, KeyMetadata, PoolKey
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_worker import KVPoolWorker
++
++
++@dataclass
++class Spec:
++    block_size: int = 32
++    dtype: object = torch.int8
++    head_size: int = 512
++    num_kv_heads: int = 1
++    page_size_padded: int | None = None
++
++
++def configuration(tmp_path):
++    identity = dict(format_version=1, protocol=contract.SHAREDKV_CACHE_PROTOCOL,
++                    encoding=contract.SHAREDKV_ENCODING, compute_revision=contract.SHAREDKV_COMPUTE_REVISION,
++                    layout="compact-c8-v1", model_digest="a" * 64, scales_digest="b" * 64)
++    manifest = {**identity, "identity_digest": contract.canonical_digest(identity),
++                "patch_sources_sha256": contract.patch_source_hashes()}
++    path = tmp_path / "manifest.json"
++    path.write_text(json.dumps(manifest))
++    config = NS(kv_transfer_config=NS(kv_connector="AscendStoreConnector", kv_role="kv_both",
++                kv_load_failure_policy="fail", kv_connector_extra_config={"backend": "memcache",
++                "cache_compatibility_manifest": str(path)}),
++                parallel_config=NS(data_parallel_size=2, data_parallel_size_local=1,
++                tensor_parallel_size=16, pipeline_parallel_size=1, prefill_context_parallel_size=1,
++                decode_context_parallel_size=1, enable_expert_parallel=True, data_parallel_rank=0),
++                model_config=NS(model=str(tmp_path)), speculative_config=NS(method="dspark", num_speculative_tokens=5))
++    cache = NS(num_blocks=5, kv_cache_tensors=[NS(offset=512, block_stride=123456)],
++               kv_cache_groups=[NS(layer_names=["layers.0.kv"], kv_cache_spec=Spec())])
++    return config, cache, manifest, path
++
++
++def test_namespace_excludes_physical_capacity_dp_and_paths(tmp_path):
++    config, cache, _, path = configuration(tmp_path)
++    expected = contract.cache_namespace(config, cache)
++    config.parallel_config.data_parallel_rank = 1
++    cache.num_blocks = 200
++    cache.kv_cache_tensors[0].offset = 1024
++    cache.kv_cache_tensors[0].block_stride = 90000
++    other = tmp_path / "identical-copy.json"
++    other.write_bytes(path.read_bytes())
++    config.kv_transfer_config.kv_connector_extra_config["cache_compatibility_manifest"] = str(other)
++    assert contract.cache_namespace(config, cache) == expected
++
++
++@pytest.mark.parametrize("field", ["model_digest", "scales_digest", "dtype", "block_size", "head_size"])
++def test_namespace_isolates_content_and_logical_layout(tmp_path, field):
++    config, cache, manifest, path = configuration(tmp_path)
++    original = contract.cache_namespace(config, cache)
++    if field.endswith("digest"):
++        manifest[field] = "c" * 64
++        identity = {key: value for key, value in manifest.items()
++                    if key not in ("identity_digest", "patch_sources_sha256")}
++        manifest["identity_digest"] = contract.canonical_digest(identity)
++        path.write_text(json.dumps(manifest))
++    else:
++        value = torch.bfloat16 if field == "dtype" else getattr(cache.kv_cache_groups[0].kv_cache_spec, field) * 2
++        cache.kv_cache_groups[0].kv_cache_spec = replace(cache.kv_cache_groups[0].kv_cache_spec, **{field: value})
++    assert contract.cache_namespace(config, cache) != original
++
++
++def test_bounded_keys_and_direct_database_agree():
++    metadata = KeyMetadata("arbitrary/local/path", 0, 0, 0, cache_namespace="a" * 64)
++    database = ChunkedTokenDatabase([metadata], [32], None, hash_block_size=32)
++    direct = next(iter(database.process_token_key_strings(32, ["tokens"])))[2]
++    assert direct == PoolKey(metadata, "tokens").to_string()
++    assert len(direct) == 136
++    for field, value in (("head_or_tp_rank", 1), ("kv_cache_group_id", 1),
++                         ("cache_role", "state"), ("cache_family", "c128")):
++        assert PoolKey(replace(metadata, **{field: value}), "tokens").to_string() != direct
++    assert PoolKey(replace(metadata, model_name="another/path"), "tokens").to_string() == direct
++    assert not PoolKey(replace(metadata, cache_namespace=None), "tokens").to_string().startswith("asc8v1:")
++
++
++def test_strided_components_span_only_real_backing_and_preserve_guards():
++    backing = torch.full((5 * 2048,), 71, dtype=torch.uint8)
++    view = backing[512:].as_strided((5, 32, 16), (2048, 16, 1))
++    assert contract.describe_block_view(view, 5) == (512, 2048, 8704, 1)
++    view[4].fill_(19)
++    expected = torch.full_like(backing, 71)
++    expected[4 * 2048 + 512:4 * 2048 + 1024] = 19
++    assert torch.equal(backing, expected)
++    with pytest.raises(ValueError, match="contiguous"):
++        contract.describe_block_view(view.transpose(1, 2), 5)
++    with pytest.raises(ValueError, match="block count"):
++        contract.describe_block_view(view, 3)
++
++
++@pytest.mark.parametrize("setting,value", [("load_async", True), ("use_layerwise", True),
++                                           ("backend", "mooncake")])
++def test_unsupported_transfer_rejected(tmp_path, setting, value):
++    config, cache, _, _ = configuration(tmp_path)
++    config.kv_transfer_config.kv_connector_extra_config[setting] = value
++    with pytest.raises(ValueError):
++        contract.cache_namespace(config, cache)
++
++
++@pytest.mark.parametrize("result", [None, [], [0, 0], [-1], [False]])
++def test_malformed_or_partial_get_never_completes_successfully(result):
++    worker = KVPoolWorker.__new__(KVPoolWorker)
++    worker.m_store = MagicMock()
++    worker.m_store.batch_get_key_info.return_value = [NS(size=lambda: 12, gva_list=lambda: [1234])]
++    worker.m_store.get.return_value = result
++    worker._completed_sync_loads, worker._failed_sync_loads = set(), set()
++    worker._record_kv_connector_operation = MagicMock()
++    with patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_worker.get_tp_group"), \
++         patch.object(torch.distributed, "all_reduce"):
++        worker._load_compact_request("r", ["k"], [[1000]], [[12]])
++    assert worker._completed_sync_loads == worker._failed_sync_loads == {"r"}
++
++
++def test_nonleader_failure_propagates_to_successful_rank():
++    worker = KVPoolWorker.__new__(KVPoolWorker)
++    worker.m_store = MagicMock()
++    worker.m_store.batch_get_key_info.return_value = [NS(size=lambda: 12, gva_list=lambda: [1234])]
++    worker.m_store.get.return_value = [0]
++    worker._completed_sync_loads, worker._failed_sync_loads = set(), set()
++    worker._record_kv_connector_operation = MagicMock()
++    with patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_worker.get_tp_group"), \
++         patch.object(torch.distributed, "all_reduce", side_effect=lambda tensor, **kw: tensor.zero_()):
++        worker._load_compact_request("r", ["k"], [[1000]], [[12]])
++    assert worker._failed_sync_loads == {"r"}
++
++
++@pytest.mark.parametrize("size", [0, 11, 13])
++def test_wrong_object_size_prevents_get(size):
++    worker = KVPoolWorker.__new__(KVPoolWorker)
++    worker.m_store = MagicMock()
++    worker.m_store.batch_get_key_info.return_value = [NS(size=lambda: size, gva_list=lambda: [1234])]
++    worker._completed_sync_loads, worker._failed_sync_loads = set(), set()
++    with patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_worker.get_tp_group"), \
++         patch.object(torch.distributed, "all_reduce"):
++        worker._load_compact_request("r", ["k"], [[1000]], [[12]])
++    worker.m_store.get.assert_not_called()
++    assert worker._failed_sync_loads == {"r"}
++
++
++def test_cancelled_receive_retains_pages_until_transfer_terminal():
++    from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler import KVPoolScheduler
++    scheduler = KVPoolScheduler.__new__(KVPoolScheduler)
++    scheduler._loading_req_ids = {"cancelled"}
++    scheduler._receiving_blocks = {"cancelled": [1, 2]}
++    scheduler._block_pool = MagicMock()
++    # A cancelled request can lose its normal request reference while the
++    # connector still owns these references. Only the terminal report drops them.
++    scheduler._block_pool.free_blocks.assert_not_called()
++    scheduler.update_finished_recving({"another-request"})
++    scheduler._block_pool.free_blocks.assert_not_called()
++    scheduler.update_finished_recving({"cancelled"})
++    scheduler._block_pool.free_blocks.assert_called_once()
++    assert not scheduler._receiving_blocks
++    assert not scheduler._loading_req_ids
++
++
++def test_staged_allocation_pins_actual_group_blocks():
++    from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler import KVPoolScheduler
++    from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.metadata import LoadSpec
++    scheduler = KVPoolScheduler.__new__(KVPoolScheduler)
++    scheduler.kv_cache_group_ids = [0, 1]
++    scheduler._unfinished_requests = {}
++    scheduler.load_specs = {'r': LoadSpec(vllm_cached_tokens=0, kvpool_cached_tokens=32, can_load=False)}
++    scheduler.load_async, scheduler.requires_load_completion, scheduler.use_layerwise = False, True, False
++    scheduler._block_pool = MagicMock()
++    scheduler._block_pool.blocks = {3: 'block3', 4: 'block4'}
++    scheduler._loading_req_ids, scheduler._receiving_blocks = set(), {}
++    blocks = MagicMock()
++    blocks.get_block_ids.return_value = [[0, 3], [4, 0]]
++    scheduler.update_state_after_alloc(NS(request_id='r'), blocks, 32)
++    scheduler._block_pool.touch.assert_called_once_with(['block3', 'block4'])
++    assert scheduler._receiving_blocks == {'r': [3, 4]}
++    assert scheduler._loading_req_ids == {'r'}
++    assert scheduler.load_specs['r'].can_load
++
++
++@pytest.mark.parametrize('tamper', ['missing', 'changed'])
++def test_partial_framework_patch_rejected(tmp_path,tamper):
++    config,cache,manifest,path=configuration(tmp_path)
++    if tamper=='missing':manifest.pop('patch_sources_sha256')
++    else:manifest['patch_sources_sha256']['pool_worker.py']='0'*64
++    path.write_text(json.dumps(manifest))
++    with pytest.raises(ValueError,match='patch source checksum'):
++        contract.cache_namespace(config,cache)
++
++
++def test_missing_required_group_is_terminal_failure():
++    worker=KVPoolWorker.__new__(KVPoolWorker)
++    worker.use_layerwise=False
++    worker.requires_load_completion=True
++    worker.cacheable_group_ids=[0,1]
++    worker.group_uses_align_state=[False,False]
++    worker._load_compact_request=MagicMock()
++    req=NS(req_id='r',load_spec=NS(can_load=True),kv_cache_group_ids=[0],block_ids_by_group=[[1]])
++    worker.start_load_kv(NS(requests=[req]))
++    worker._load_compact_request.assert_called_once_with('r',[],[],[])
++
++
++@pytest.mark.parametrize('result,expected', [([0,-1],[0,-1]), (None,[-1,-1]), ([0],[-1,-1])])
++def test_put_requires_one_result_per_object_and_records_failures(result,expected):
++    import threading
++    backend=MemcacheBackend.__new__(MemcacheBackend)
++    backend.store=MagicMock()
++    backend.store.batch_put_from_layers.return_value=result
++    backend._store_initialized=True
++    backend._transfer_stats={}
++    backend._transfer_stats_lock=threading.Lock()
++    assert backend.put(['a','b'],[[100],[200]],[[12],[20]])==expected
++    stats=backend.drain_transfer_stats()
++    assert stats['put_failed_bytes']==sum(length for length,code in zip([12,20],expected) if code!=0)
++    assert sum(value for key,value in stats.items() if key.endswith('_keys'))==2
++
++
++@pytest.mark.parametrize('compact', [True, False])
++def test_delayed_put_preserves_source_until_the_next_model_step(compact):
++    import threading
++    from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.kv_transfer import (
++        KVCacheStoreBatch, KVCacheStoreSendingThread,
++    )
++    worker=KVPoolWorker.__new__(KVPoolWorker)
++    worker.requires_load_completion=compact
++    worker.group_uses_align_state=[False]
++    sender=KVCacheStoreSendingThread.__new__(KVCacheStoreSendingThread)
++    sender.raise_if_failed=MagicMock()
++    source=bytearray(b'original')
++    copied=[];errors=[]
++    entered,release,returned=threading.Event(),threading.Event(),threading.Event()
++    batch=KVCacheStoreBatch()
++    def copy_when_released():
++        entered.set()
++        if release.wait(5):copied.append(bytes(source))
++        batch.done.set()
++    transfer=threading.Thread(target=copy_when_released)
++    def queue(requests):
++        transfer.start()
++        return batch
++    sender.add_save_batch=queue
++    worker.kv_send_thread=sender
++    def next_step():
++        try:
++            worker.wait_for_save(NS(requests=[NS(can_save=True)]))
++            # Reuse the SWA/state bytes as the next model step may do.
++            source[:]=b'nextstep'
++        except BaseException as exc:errors.append(exc)
++        finally:returned.set()
++    runner=threading.Thread(target=next_step)
++    try:
++        runner.start()
++        assert entered.wait(5)
++        if compact:assert not returned.wait(.05),'C8 returned while PUT still owns source bytes'
++        else:assert returned.wait(5),'Legacy asynchronous behavior changed'
++    finally:
++        release.set();runner.join(5);transfer.join(5)
++    assert not errors and not runner.is_alive() and not transfer.is_alive()
++    assert copied==[b'original' if compact else b'nextstep']
+diff --git a/tests/ut/distributed/ascend_store/test_compact_dp_metadata.py b/tests/ut/distributed/ascend_store/test_compact_dp_metadata.py
+new file mode 100644
+--- /dev/null
++++ b/tests/ut/distributed/ascend_store/test_compact_dp_metadata.py
+@@ -0,0 +1,165 @@
++"""Preserve metadata values and reject unsafe local graph disagreement."""
++
++import importlib.util
++from pathlib import Path
++from types import SimpleNamespace as NS
++from unittest.mock import Mock
++
++import pytest
++import torch
++
++ROOT = Path(__file__).resolve().parents[4]
++SPEC = importlib.util.spec_from_file_location(
++    "compact_dp_metadata_contract", ROOT / "vllm_ascend/worker/compact_dp_metadata.py"
++)
++relay = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(relay)
++
++
++def fixture(monkeypatch, dp_rank=0, tp_rank=0, enabled=True):
++    runner = NS(
++        dp_rank=dp_rank,
++        vllm_config=NS(
++            kv_transfer_config=NS(
++                kv_connector="AscendStoreConnector",
++                kv_connector_extra_config={"backend": "memcache", "cache_compatibility_manifest": "frozen.json"}
++                if enabled
++                else {},
++            ),
++            parallel_config=NS(
++                tensor_parallel_size=16,
++                data_parallel_size=2,
++                data_parallel_size_local=1,
++                pipeline_parallel_size=1,
++                prefill_context_parallel_size=1,
++                decode_context_parallel_size=1,
++            ),
++        ),
++    )
++    group = NS(cpu_group=object(), world_size=2)
++    tp = NS(
++        rank_in_group=tp_rank,
++        world_size=16,
++        mq_broadcaster=NS(handle=NS(local_reader_ranks=list(range(1, 16)), remote_subscribe_addr=None)),
++        broadcast_object=Mock(side_effect=lambda payload, src: payload),
++    )
++    monkeypatch.setattr(relay, "get_tp_group", lambda: tp)
++    monkeypatch.setattr(relay, "get_dp_group", lambda: group)
++    reduction = Mock()
++    monkeypatch.setattr(relay.dist, "all_reduce", reduction)
++    return runner, tp, group, reduction
++
++
++@pytest.mark.parametrize("dp_rank", [0, 1])
++@pytest.mark.parametrize("tp_rank", [0, 1, 15])
++@pytest.mark.parametrize("tokens,modes", [([0, 0], [0, 0]), ([0, 6], [0, 2]), ([6, 12], [2, 2]), ([4096, 48], [0, 1])])
++def test_identical_to_all_dp_sum_for_dummy_prefill_decode(monkeypatch, dp_rank, tp_rank, tokens, modes):
++    runner, tp, group, reduction = fixture(monkeypatch, dp_rank, tp_rank)
++    expected = torch.tensor([tokens, modes], dtype=torch.int32)
++    # Multiple steps prove that old broadcast data cannot be silently reused.
++    for sequence in range(3):
++        packed = torch.zeros((2, 2), dtype=torch.int32)
++        packed[:, dp_rank] = expected[:, dp_rank]
++        local = expected[:, dp_rank].tolist()
++        if tp_rank == 0:
++            reduction.side_effect = lambda tensor, group: tensor.copy_(expected)
++        else:
++            tp.broadcast_object.side_effect = None
++            tp.broadcast_object.return_value = (relay._TAG, sequence, local, expected.tolist())
++        relay.reduce_dp_metadata(runner, packed)
++        assert torch.equal(packed, expected)
++        assert runner._compact_dp_metadata_sequence == sequence + 1
++    assert reduction.call_count == (3 if tp_rank == 0 else 0)
++    if tp_rank == 0:
++        assert all(call.kwargs["group"] is group.cpu_group for call in reduction.call_args_list)
++
++
++@pytest.mark.parametrize("transfer", ["legacy", "none"])
++def test_noncompact_path_uses_original_collective(monkeypatch, transfer):
++    runner, tp, group, reduction = fixture(monkeypatch, enabled=False)
++    if transfer == "none":
++        runner.vllm_config.kv_transfer_config = None
++    packed = torch.zeros((2, 2), dtype=torch.int32)
++    relay.reduce_dp_metadata(runner, packed)
++    reduction.assert_called_once_with(packed, group=group.cpu_group)
++    tp.broadcast_object.assert_not_called()
++
++
++@pytest.mark.parametrize(
++    "field,value",
++    [
++        ("tensor_parallel_size", 8),
++        ("data_parallel_size", 4),
++        ("data_parallel_size_local", 2),
++        ("pipeline_parallel_size", 2),
++        ("prefill_context_parallel_size", 2),
++        ("decode_context_parallel_size", 2),
++    ],
++)
++def test_unsupported_parallelism_rejected_before_collective(monkeypatch, field, value):
++    runner, tp, _, reduction = fixture(monkeypatch)
++    setattr(runner.vllm_config.parallel_config, field, value)
++    with pytest.raises(ValueError, match="requires local"):
++        relay.reduce_dp_metadata(runner, torch.zeros((2, 2), dtype=torch.int32))
++    reduction.assert_not_called()
++    tp.broadcast_object.assert_not_called()
++
++
++@pytest.mark.parametrize("missing", ["queue", "local_reader", "remote_reader"])
++def test_nonlocal_tp_topology_rejected(monkeypatch, missing):
++    runner, tp, _, reduction = fixture(monkeypatch)
++    if missing == "queue":
++        tp.mq_broadcaster = None
++    elif missing == "local_reader":
++        tp.mq_broadcaster.handle.local_reader_ranks.pop()
++    else:
++        tp.mq_broadcaster.handle.remote_subscribe_addr = "tcp://remote"
++    with pytest.raises(ValueError, match="shared-memory"):
++        relay.reduce_dp_metadata(runner, torch.zeros((2, 2), dtype=torch.int32))
++    reduction.assert_not_called()
++
++
++@pytest.mark.parametrize(
++    "payload",
++    [
++        None,
++        (relay._TAG, 1, [6, 2], [[6, 12], [2, 2]]),
++        (relay._TAG, 0, [6, 0], [[6, 12], [0, 2]]),
++        (relay._TAG, 0, [7, 2], [[7, 12], [2, 2]]),
++        ("wrong", 0, [6, 2], [[6, 12], [2, 2]]),
++    ],
++)
++def test_stale_or_rank_divergent_input_rejected_without_writing(monkeypatch, payload):
++    runner, tp, _, reduction = fixture(monkeypatch, tp_rank=15)
++    packed = torch.tensor([[6, 0], [2, 0]], dtype=torch.int32)
++    before = packed.clone()
++    tp.broadcast_object.side_effect = None
++    tp.broadcast_object.return_value = payload
++    with pytest.raises(RuntimeError, match="mismatch"):
++        relay.reduce_dp_metadata(runner, packed)
++    assert torch.equal(packed, before)
++    assert runner._compact_dp_metadata_sequence == 0
++    reduction.assert_not_called()
++
++
++@pytest.mark.parametrize(
++    "values", [[], [[6], [2]], [[6, -1], [2, 2]], [[6, 1 << 40], [2, 2]], [[6, 12.0], [2, 2]], [[7, 12], [2, 2]]]
++)
++def test_malformed_result_rejected_without_writing(monkeypatch, values):
++    runner, tp, _, _ = fixture(monkeypatch, tp_rank=1)
++    packed = torch.tensor([[6, 0], [2, 0]], dtype=torch.int32)
++    before = packed.clone()
++    tp.broadcast_object.side_effect = None
++    tp.broadcast_object.return_value = (relay._TAG, 0, [6, 2], values)
++    with pytest.raises(RuntimeError, match="Malformed"):
++        relay.reduce_dp_metadata(runner, packed)
++    assert torch.equal(packed, before)
++
++
++def test_leader_transport_failure_never_broadcasts_success(monkeypatch):
++    runner, tp, _, reduction = fixture(monkeypatch)
++    reduction.side_effect = RuntimeError("transport failure")
++    with pytest.raises(RuntimeError, match="transport failure"):
++        relay.reduce_dp_metadata(runner, torch.zeros((2, 2), dtype=torch.int32))
++    tp.broadcast_object.assert_not_called()
++    assert runner._compact_dp_metadata_sequence == 0
+diff --git a/tests/ut/distributed/ascend_store/test_compact_lookup_progress.py b/tests/ut/distributed/ascend_store/test_compact_lookup_progress.py
+new file mode 100644
+--- /dev/null
++++ b/tests/ut/distributed/ascend_store/test_compact_lookup_progress.py
+@@ -0,0 +1,160 @@
++"""C8 CPU work reduction must retain every key, page and shard assignment."""
++
++import hashlib
++import random
++from concurrent.futures import ThreadPoolExecutor
++from dataclasses import replace
++from types import SimpleNamespace
++
++import pytest
++
++import tests.ut.distributed.ascend_store._mock_deps  # noqa: F401
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.cache_compatibility import (
++    ObjectKeyEncoder,
++    object_key,
++)
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.metadata import ChunkedTokenDatabase, KeyMetadata
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_worker import KVPoolWorker
++
++
++def database(namespace="a" * 64, block_size=32):
++    return ChunkedTokenDatabase(
++        [KeyMetadata("model", 0, 0, 0, cache_namespace=namespace)], [block_size], None, hash_block_size=2
++    )
++
++
++@pytest.mark.parametrize("layer", [None, 0, 17])
++def test_encoder_retains_canonical_bytes_for_arbitrary_json_strings(layer):
++    generator = random.Random(42)
++    alphabet = ["a", "Z", "3", '"', "\\", "\n", "\0", "中", "🦀", " ", ":", "{", "}"]
++    metadata = database().metadata[0]
++    for index in range(200):
++        current = replace(
++            metadata,
++            head_or_tp_rank=index % 16,
++            dcp_rank=index % 4,
++            pp_rank=index % 3,
++            kv_cache_group_id=index % 9,
++            cache_role="".join(generator.choices(alphabet, k=12)),
++            cache_family="".join(generator.choices(alphabet, k=12)),
++        )
++        token_hash = (
++            "".join(generator.choices(alphabet, k=30)) if index % 2 else hashlib.sha256(str(index).encode()).hexdigest()
++        )
++        assert ObjectKeyEncoder(current, layer).encode(token_hash) == object_key(current, token_hash, layer)
++
++
++def test_encoder_prefix_is_unchanged_by_repeated_concurrent_calls():
++    metadata = database().metadata[0]
++    encoder = ObjectKeyEncoder(metadata)
++    hashes = [hashlib.sha256(str(index).encode()).hexdigest() for index in range(200)]
++    with ThreadPoolExecutor(max_workers=4) as executor:
++        result = list(executor.map(encoder.encode, hashes))
++    assert result == [object_key(metadata, value) for value in hashes]
++    assert encoder.encode(hashes[0]) == result[0]
++
++
++def test_database_caches_descriptors_not_token_hashes_and_invalidates_families():
++    current = database()
++    for index in range(100):
++        value = str(index)
++        assert current.namespaced_key(value, 0) == current._make_key_by_hash(value, 0).to_string()
++    assert len(current._object_key_encoders) == 1
++    previous = current.namespaced_key("token", 0)
++    current.set_group_buffers({}, {}, group_cache_families={0: "c128"})
++    assert not current._object_key_encoders
++    assert current.namespaced_key("token", 0) == current._make_key_by_hash("token", 0).to_string()
++    assert current.namespaced_key("token", 0) != previous
++    for field, value in (("head_or_tp_rank", 3), ("dcp_rank", 1), ("pp_rank", 2), ("cache_namespace", "b" * 64)):
++        setattr(current.metadata[0], field, value)
++        assert current.namespaced_key("token", 0) == current._make_key_by_hash("token", 0).to_string()
++
++
++@pytest.mark.parametrize("namespace", [None, "a" * 64])
++def test_filtered_pages_and_shards_match_full_reference_walk(namespace):
++    generator = random.Random(1729)
++    for _ in range(1000):
++        block_size = generator.choice([2, 8, 32, 128])
++        current = database(namespace, block_size)
++        hashes = [index.to_bytes(4, "big") * 8 for index in range(generator.randrange(258))]
++        token_len = generator.randrange(-4, len(hashes) * 2 + 101)
++        num_blocks = min(len(hashes) // (block_size // 2), max(0, -(-token_len // block_size)))
++        mask_num = generator.randrange(-9, max(token_len, 0) + 101)
++        block_ids = (
++            None
++            if generator.randrange(2)
++            else [generator.randrange(-1, 50) for _ in range(generator.randrange(num_blocks + 4))]
++        )
++        mask = (
++            None
++            if generator.randrange(3) == 0
++            else [bool(generator.randrange(2)) for _ in range(generator.randrange(num_blocks + 4))]
++        )
++        skip_null = bool(generator.randrange(2))
++        shard_rank = generator.choice([None, 0, 1, 3])
++        shard_size = generator.choice([None, 1, 2, 4])
++        offset = max(num_blocks - len(block_ids), 0) if block_ids is not None else 0
++        expected = []
++        for chunk in range(num_blocks):
++            start, end = chunk * block_size, min((chunk + 1) * block_size, token_len)
++            if start < mask_num or end <= start or chunk % 3 == 1:
++                continue
++            if mask is not None and (chunk >= len(mask) or not mask[chunk]):
++                continue
++            block_id = None
++            if block_ids is not None:
++                if not 0 <= chunk - offset < len(block_ids):
++                    continue
++                block_id = block_ids[chunk - offset]
++                if skip_null and block_id <= 0:
++                    continue
++            expected.append((start, end, hashes[(chunk + 1) * (block_size // 2) - 1], block_id))
++        if shard_rank is not None and shard_size is not None and shard_size > 1:
++            expected = [entry for index, entry in enumerate(expected) if index % shard_size == shard_rank]
++
++        def allowed(start, block_size=block_size, mask=mask):
++            chunk = start // block_size
++            return chunk % 3 != 1 and (mask is None or (chunk < len(mask) and mask[chunk]))
++
++        actual = list(
++            current._iter_token_chunks(
++                token_len,
++                hashes,
++                mask_num,
++                block_ids=block_ids,
++                skip_null_blocks=skip_null,
++                chunk_filter=allowed,
++                shard_rank=shard_rank,
++                shard_size=shard_size,
++                chunk_mask=mask if namespace is not None else None,
++            )
++        )
++        assert actual == expected
++
++
++@pytest.mark.parametrize("local_rank,ranks,pp,dcp", [(0, 1, 1, 1), (5, 1, 1, 1), (0, 16, 1, 1), (3, 4, 2, 2)])
++def test_lookup_rank_variants_match_canonical_keys(local_rank, ranks, pp, dcp):
++    current = database()
++    current.metadata[0].head_or_tp_rank = local_rank
++    current.group_cache_families["kv"][0] = "state"
++    worker = KVPoolWorker.__new__(KVPoolWorker)
++    worker.cache_namespace = "a" * 64
++    worker.token_database = current
++    worker.pp_size, worker.dcp_size = pp, dcp
++    worker.get_group_tp_size = lambda group_id: ranks
++    token_hash = b"t" * 32
++    local_key = current.namespaced_key(token_hash.hex(), 0)
++    actual = worker._expand_lookup_key_variants(local_key, 0, True, token_hash)
++    metadata = current._make_key_by_hash(token_hash.hex(), 0).key_metadata
++    assert actual == [
++        object_key(replace(metadata, head_or_tp_rank=rank, dcp_rank=d, pp_rank=p), token_hash.hex())
++        for p in range(pp)
++        for d in range(dcp)
++        for rank in range(ranks)
++    ]
++
++
++def test_private_groups_still_have_no_transfer_keys():
++    current = database()
++    current.cache_coordinator = SimpleNamespace(cacheable_group_ids=[])
++    assert list(current.process_token_key_strings(64, [b"t"] * 32, chunk_mask=[True, True])) == []
+diff --git a/tests/ut/distributed/ascend_store/test_load_progress.py b/tests/ut/distributed/ascend_store/test_load_progress.py
+new file mode 100644
+--- /dev/null
++++ b/tests/ut/distributed/ascend_store/test_load_progress.py
+@@ -0,0 +1,576 @@
++"""C8 receive progress must preserve one model collective per DP iteration."""
++
++import ast
++import hashlib
++import importlib.util
++import types
++from collections import deque
++from collections.abc import Callable
++from concurrent.futures import Future, InvalidStateError
++from contextlib import nullcontext, suppress
++from pathlib import Path
++from types import SimpleNamespace as NS
++from typing import Any, cast
++from unittest.mock import Mock
++
++import pytest
++
++ROOT = Path(__file__).resolve().parents[4]
++SPEC = importlib.util.spec_from_file_location(
++    "compact_load_progress_contract",
++    ROOT / "vllm_ascend/patch/platform/patch_compact_load_progress.py",
++)
++progress = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(progress)
++
++
++def request(finished=False):
++    return NS(is_finished=lambda: finished)
++
++
++def entry(tokens=0):
++    return (None, NS(total_num_scheduled_tokens=tokens), None)
++
++
++def engine(loading=(), queue=(), capacity=2):
++    pool = NS(requires_load_completion=True, _loading_req_ids=set(loading))
++    scheduler = NS(
++        connector=NS(connector_scheduler=pool),
++        finished_recving_kv_req_ids=set(),
++        requests={r: request() for r in loading},
++    )
++    return NS(scheduler=scheduler, batch_queue=deque(queue), batch_queue_size=capacity, is_ec_consumer=True)
++
++
++@pytest.mark.parametrize("mode", ["legacy", "no_connector", "no_queue", "ec_producer"])
++def test_unrelated_paths_call_original_once(mode):
++    core = engine(loading={"r"})
++    if mode == "legacy":
++        core.scheduler.connector.connector_scheduler.requires_load_completion = False
++    elif mode == "no_connector":
++        core.scheduler.connector = None
++    elif mode == "no_queue":
++        core.batch_queue = None
++    else:
++        core.is_ec_consumer = False
++    original = Mock(return_value=False)
++    assert progress.progress_step(core, original) is False
++    original.assert_called_once_with(core)
++
++
++def test_real_forward_stops_immediately():
++    core = engine(loading={"r"})
++    original = Mock(return_value=True)
++    assert progress.progress_step(core, original)
++    original.assert_called_once()
++
++
++def test_preexisting_forward_consumed_by_original_does_not_allow_second_step():
++    core = engine(loading={"r"}, queue=[entry(16)])
++    original = Mock(side_effect=lambda e: (e.batch_queue.clear(), False)[1])
++    assert not progress.progress_step(core, original)
++    original.assert_called_once()
++
++
++def test_new_forward_in_queue_even_when_original_reports_false_stops_progress():
++    core = engine(loading={"r"})
++    original = Mock(side_effect=lambda e: (e.batch_queue.append(entry(1)), False)[1])
++    assert not progress.progress_step(core, original)
++    original.assert_called_once()
++
++
++@pytest.mark.parametrize("finished", [True, False])
++def test_cancelled_or_removed_request_does_not_progress(finished):
++    core = engine(loading={"r"})
++
++    def original(e):
++        if finished:
++            e.scheduler.requests["r"] = request(finished=True)
++        else:
++            e.scheduler.requests.clear()
++        return False
++
++    counted = Mock(side_effect=original)
++    assert not progress.progress_step(core, counted)
++    counted.assert_called_once()
++
++
++def test_bounded_when_scheduler_cannot_promote():
++    core = engine(loading={"r"}, capacity=3)
++    original = Mock(return_value=False)
++    assert not progress.progress_step(core, original)
++    assert original.call_count == 1 + core.batch_queue_size + 1
++
++
++def test_executor_exception_propagates():
++    core = engine(loading={"r"})
++    original = Mock(side_effect=[False, RuntimeError("GET transport stopped")])
++    with pytest.raises(RuntimeError, match="transport stopped"):
++        progress.progress_step(core, original)
++    assert original.call_count == 2
++
++
++def upstream_methods():
++    """Exercise the installed, hash-pinned queue code, not a duplicate of it."""
++    package = importlib.util.find_spec("vllm")
++    if package is None:
++        pytest.skip("Pinned vLLM source not installed; pure contracts still run")
++    path = Path(package.origin).parent / "v1/engine/core.py"
++    assert hashlib.sha256(path.read_bytes()).hexdigest() == progress.ENGINE_CORE_SHA256
++    parsed = ast.parse(path.read_text())
++    names = {"step_with_batch_queue", "_process_engine_step"}
++    methods = [
++        m
++        for cls in parsed.body
++        if isinstance(cls, ast.ClassDef)
++        for m in cls.body
++        if isinstance(m, ast.FunctionDef) and m.name in names
++    ]
++    assert len(methods) == 2
++    module = ast.Module(
++        body=[ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")], level=0), *methods],
++        type_ignores=[],
++    )
++    namespace = dict(Future=Future, ModelRunnerOutput=object, cast=cast, time=NS(sleep=lambda _: None))
++    exec(compile(ast.fix_missing_locations(module), str(path), "exec"), namespace)
++    return namespace["step_with_batch_queue"], namespace["_process_engine_step"]
++
++
++@pytest.mark.parametrize("capacity", [1, 2, 3])
++@pytest.mark.parametrize("terminal", ["success", "failure", "cancel"])
++def test_actual_upstream_queue_drains_receive_before_forward(capacity, terminal):
++    step, original = upstream_methods()
++    core = engine(capacity=capacity)
++    scheduler = core.scheduler
++    scheduler.requests["r"] = request()
++    pool = scheduler.connector.connector_scheduler
++    state = {"scheduled": False, "ready": False, "updates": [], "forwards": 0, "posts": []}
++    scheduler.has_requests = lambda: bool(scheduler.requests)
++
++    def schedule(_):
++        tokens, receive = 0, False
++        if not state["scheduled"]:
++            state["scheduled"] = True
++            pool._loading_req_ids.add("r")
++            receive = True
++        elif state["ready"]:
++            tokens = 32
++        return NS(total_num_scheduled_tokens=tokens, receive=receive, pending_structured_output_tokens=False)
++
++    scheduler.schedule = schedule
++
++    def update(output, result):
++        state["updates"].append(result)
++        if output.receive:
++            # In production this result is available only after checked GET +
++            # TP consensus. The normal scheduler, not the patch, promotes it.
++            pool._loading_req_ids.clear()
++            if terminal == "success":
++                scheduler.finished_recving_kv_req_ids.add("r")
++                state["ready"] = True
++            else:
++                scheduler.requests.clear()
++        return {}
++
++    scheduler.update_from_output = update
++    scheduler.get_grammar_bitmask = lambda _: None
++
++    def execute(output, non_block):
++        assert non_block
++        if output.total_num_scheduled_tokens:
++            assert state["ready"] and terminal == "success"
++            state["forwards"] += 1
++        future = Future()
++        future.set_result(NS(receive=output.receive))
++        return future
++
++    def sample(_, non_block):
++        future = Future()
++        future.set_result(NS(receive=False))
++        return future
++
++    core.model_executor = NS(execute_model=execute, sample_tokens=sample)
++    core.is_pooling_model = False
++    core.log_error_detail = lambda _: nullcontext()
++    core.capture_iteration_details = lambda _: nullcontext()
++    core._attach_iteration_details = lambda *_: None
++    core._should_throttle_prefills = lambda: False
++    core._process_aborts_queue = Mock()
++    core.post_step = lambda executed: state["posts"].append(executed)
++    core.output_queue = NS(put_nowait=Mock())
++    core.step_fn = lambda: step(core)
++    assert progress.progress_step(core, original) is (terminal == "success")
++    assert state["forwards"] == int(terminal == "success")
++    assert any(result.receive for result in state["updates"])
++    assert core._process_aborts_queue.called
++    assert not pool._loading_req_ids
++
++
++def test_install_pin_and_idempotence(tmp_path, monkeypatch):
++    path = tmp_path / "core.py"
++    path.write_text("audited test source")
++
++    class Engine:
++        def _process_engine_step(self):
++            return False
++
++    Engine.__module__ = "vllm.v1.engine.core"
++    core = NS(__name__=Engine.__module__, __file__=str(path), DPEngineCoreProc=Engine)
++    module = types.ModuleType("vllm.v1.engine")
++    module.core = core
++    monkeypatch.setitem(__import__("sys").modules, "vllm.v1.engine", module)
++    config = NS(parallel_config=NS(distributed_executor_backend="mp"))
++    with pytest.raises(ValueError, match="validated vLLM"):
++        progress.install(config)
++    monkeypatch.setattr(progress, "ENGINE_CORE_SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
++    original = Engine._process_engine_step
++    assert progress.install(config)
++    patched = Engine._process_engine_step
++    assert patched is not original
++    assert progress.install(config) and Engine._process_engine_step is patched
++    config.parallel_config.distributed_executor_backend = "external_launcher"
++    assert not progress.install(config)
++
++
++def upstream_future():
++    """Use the actual lazy mp FutureWrapper; ordinary Future hid a deadlock."""
++    package = importlib.util.find_spec("vllm")
++    if package is None:
++        pytest.skip("Pinned vLLM source not installed")
++    path = Path(package.origin).parent / "v1/executor/multiproc_executor.py"
++    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
++        "3ed0149a8a8e1550c4f062af40e645d1b734e70f99981bc5bf15f0360507648a"
++    )
++    node = next(
++        n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef) and n.name == "FutureWrapper"
++    )
++    namespace = dict(
++        Future=Future, deque=deque, Callable=Callable, Any=Any, suppress=suppress, InvalidStateError=InvalidStateError
++    )
++    exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), str(path), "exec"), namespace)
++    return namespace["FutureWrapper"]
++
++
++def staggered_engine(capacity=2, terminals=None, second=True):
++    """Execute the real queue method against staggered executor completions."""
++    step, original = upstream_methods()
++    core = engine(capacity=capacity)
++    scheduler = core.scheduler
++    pool = scheduler.connector.connector_scheduler
++    scheduler.requests["r1"] = request()
++    states = {"r1": "new"}
++    terminals = terminals or {}
++    observed = {"calls": [], "forwards": [], "updates": [], "events": [], "pumps": 0}
++    future_class = upstream_future()
++    futures = deque()
++    scheduler.has_requests = lambda: bool(scheduler.requests)
++
++    def schedule(_):
++        ready = tuple(key for key in scheduler.requests if states[key] == "ready")
++        receive = tuple(key for key in scheduler.requests if states[key] == "new")
++        for key in receive:
++            states[key] = "loading"
++            pool._loading_req_ids.add(key)
++        return NS(
++            total_num_scheduled_tokens=584 * len(ready),
++            receive=receive,
++            forward=ready,
++            pending_structured_output_tokens=False,
++        )
++
++    def execute(output, non_block):
++        assert non_block
++        observed["calls"].append((output.receive, output.forward))
++        if output.forward:
++            assert all(states[key] == "ready" for key in output.forward)
++            observed["forwards"].append(output.forward)
++            observed["events"].append(("forward", output.forward))
++
++        def get_response():
++            for key in output.receive:
++                if terminals.get(key) == "cancel":
++                    scheduler.requests.pop(key, None)
++                    observed["events"].append(("cancel", key))
++                observed["events"].append(("transfer_terminal", key))
++            return NS(receive=output.receive)
++
++        return future_class(futures, get_response)
++
++    def process_inputs():
++        observed["pumps"] += 1
++        # A new input arrives during the first blocking worker response. It is
++        # drained immediately afterwards, before scheduler publication.
++        if ("transfer_terminal", "r1") not in observed["events"]:
++            return
++        if second and "r2" not in states:
++            scheduler.requests["r2"] = request()
++            states["r2"] = "new"
++            observed["events"].append(("arrived", "r2"))
++
++    def update(output, result):
++        assert result.receive == output.receive
++        observed["updates"].append(output.receive)
++        errors = []
++        for key in output.receive:
++            assert ("transfer_terminal", key) in observed["events"]
++            pool._loading_req_ids.discard(key)
++            if terminals.get(key) in ("failure", "cancel"):
++                scheduler.requests.pop(key, None)
++                observed["events"].append(("release", key))
++                errors.append(key)
++            else:
++                states[key] = "ready"
++                scheduler.finished_recving_kv_req_ids.add(key)
++        return {0: tuple(errors)} if errors else {}
++
++    def sample(_, non_block):
++        assert non_block
++        future = Future()
++        future.set_result(NS(receive=()))
++        return future
++
++    scheduler.schedule = schedule
++    scheduler.update_from_output = update
++    scheduler.get_grammar_bitmask = lambda _: None
++    core.model_executor = NS(execute_model=execute, sample_tokens=sample)
++    core.is_pooling_model = False
++    core.log_error_detail = lambda _: nullcontext()
++    core.capture_iteration_details = lambda _: nullcontext()
++    core._attach_iteration_details = Mock()
++    core._should_throttle_prefills = lambda: False
++    core._process_aborts_queue = Mock()
++    core._process_input_queue = process_inputs
++    core.post_step = Mock()
++    core.output_queue = NS(put_nowait=Mock())
++    core.step_fn = lambda: step(core)
++    return core, original, observed
++
++
++@pytest.mark.parametrize("capacity", [2, 3])
++@pytest.mark.parametrize(
++    "terminals", [{}, {"r2": "failure"}, {"r1": "failure"}, {"r2": "cancel"}, {"r1": "cancel", "r2": "failure"}]
++)
++def test_staggered_receives_finish_before_one_combined_forward(capacity, terminals):
++    core, original, observed = staggered_engine(capacity, terminals)
++    expected = tuple(key for key in ("r1", "r2") if key not in terminals)
++    assert progress.progress_step(core, original) is bool(expected)
++    assert observed["forwards"] == ([expected] if expected else [])
++    assert observed["updates"] == [("r1",), ("r2",)]
++    assert observed["calls"] == [(("r1",), ()), (("r2",), ())] + ([((), expected)] if expected else [])
++    assert not core.scheduler.connector.connector_scheduler._loading_req_ids
++    for key in terminals:
++        assert observed["events"].index(("transfer_terminal", key)) < observed["events"].index(("release", key))
++    if terminals:
++        assert core.output_queue.put_nowait.called
++    assert core._process_aborts_queue.call_count == 2
++
++
++@pytest.mark.parametrize("capacity", [2, 3])
++def test_single_receive_submits_no_redundant_empty_worker_batch(capacity):
++    core, original, observed = staggered_engine(capacity, second=False)
++    assert progress.progress_step(core, original)
++    assert observed["calls"] == [(("r1",), ()), ((), ("r1",))]
++    assert observed["updates"] == [("r1",)]
++    assert observed["pumps"] >= 2
++
++
++def test_zero_consumer_preserves_upstream_executor_error_and_hooks():
++    core = engine()
++    result, execution = Future(), Future()
++    result.set_result(None)
++    execution.set_exception(RuntimeError("executor stopped during receive"))
++    output = NS(total_num_scheduled_tokens=0)
++    core.batch_queue.append((result, output, execution))
++    core.capture_iteration_details = lambda _: nullcontext()
++    core.log_error_detail = lambda _: nullcontext()
++    core._process_aborts_queue = Mock()
++    core.scheduler.update_from_output = Mock()
++    with pytest.raises(RuntimeError, match="executor stopped during receive"):
++        progress._consume_zero_batch(core)
++    core._process_aborts_queue.assert_not_called()
++    core.scheduler.update_from_output.assert_not_called()
++
++
++def test_zero_wait_uses_nonblocking_actual_upstream_input_drain():
++    import queue
++
++    package = importlib.util.find_spec("vllm")
++    path = Path(package.origin).parent / "v1/engine/core.py"
++    assert hashlib.sha256(path.read_bytes()).hexdigest() == progress.ENGINE_CORE_SHA256
++    node = next(
++        n
++        for n in ast.walk(ast.parse(path.read_text()))
++        if isinstance(n, ast.FunctionDef) and n.name == "_process_input_queue"
++    )
++    namespace = dict(queue=queue)
++    exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), str(path), "exec"), namespace)
++    core = engine(loading={"r1"})
++    core.log_error_detail = lambda _: nullcontext()
++    future = Future()
++    core.batch_queue.append((future, NS(total_num_scheduled_tokens=0), future))
++    core.input_queue = queue.Queue()
++    core.input_queue.put(("add", "r2"))
++    core.has_work = lambda: bool(core.batch_queue) or bool(core.scheduler.requests)
++    # These must not be called: the queued future keeps has_work true.
++    core.is_running = Mock(side_effect=AssertionError("must not enter blocking input branch"))
++    core._notify_idle_state_callbacks = Mock(side_effect=AssertionError("not idle"))
++
++    def handle(operation, key):
++        assert operation == "add"
++        core.scheduler.requests[key] = request()
++        future.set_result(NS())
++
++    core._handle_client_request = handle
++    core._process_input_queue = lambda: namespace["_process_input_queue"](core)
++    assert progress._await_zero_batch(core)
++    assert "r2" in core.scheduler.requests and future.done()
++    assert len(core.batch_queue) == 1  # Observation never publishes the result.
++    assert not core.scheduler.finished_recving_kv_req_ids
++
++
++def test_lazy_future_preserves_fifo_completion_without_scheduler_publication():
++    future_class = upstream_future()
++    futures, received = deque(), []
++    first = future_class(futures, lambda: received.append("first"))
++    second = future_class(futures, lambda: received.append("second"))
++    assert not first.done() and not second.done() and not received
++    core = engine(loading={"r1"})
++    core.log_error_detail = lambda _: nullcontext()
++    core.batch_queue.append((second, NS(total_num_scheduled_tokens=0), second))
++    assert not progress._await_zero_batch(core)
++    assert first.done() and second.done() and received == ["first", "second"]
++    assert not core.scheduler.finished_recving_kv_req_ids and len(core.batch_queue) == 1
++
++
++@pytest.mark.parametrize("terminal", ["success", "failure", "cancel"])
++def test_first_wave_input_handoff_preserves_receive_barrier(terminal):
++    core, original, observed = staggered_engine(second=False, terminals={"r1": terminal})
++    core.scheduler.requests.clear()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.input_queue = NS(get=Mock(return_value=("add", "r1")))
++    core._handle_client_request = lambda _, key: core.scheduler.requests.update({key: request()})
++    assert progress.progress_step(core, original) is (terminal == "success")
++    core.input_queue.get.assert_called_once_with(timeout=progress.FIRST_WAVE_INPUT_WAIT_SECONDS)
++    assert observed["updates"] == [("r1",)]
++    assert observed["forwards"] == ([("r1",)] if terminal == "success" else [])
++    assert ("transfer_terminal", "r1") in observed["events"]
++    if terminal == "success":
++        assert observed["events"].index(("transfer_terminal", "r1")) < observed["events"].index(("forward", ("r1",)))
++
++
++@pytest.mark.parametrize("case", ["idle", "later_step", "pausing", "request", "queued_forward"])
++def test_first_wave_handoff_does_not_touch_other_scheduling_states(case):
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: bool(core.scheduler.requests)
++    if case == "idle":
++        core.engines_running = False
++    elif case == "later_step":
++        core.step_counter = 1
++    elif case == "pausing":
++        core.pending_pause = True
++    elif case == "request":
++        core.scheduler.requests["r"] = request()
++    else:
++        core.batch_queue.append(entry(1))
++    core.input_queue = NS(get=Mock(side_effect=AssertionError("unexpected input wait")))
++    core._process_input_queue = Mock(side_effect=AssertionError("unexpected input drain"))
++    original = Mock(return_value=False)
++    assert not progress.progress_step(core, original)
++    original.assert_called_once()
++
++
++def test_first_wave_without_arriving_input_returns_to_normal_dummy():
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: False
++    core._process_input_queue = Mock()
++    core.input_queue = NS(get=Mock(side_effect=progress.Empty))
++    core._handle_client_request = Mock(side_effect=AssertionError("no message received"))
++    original = Mock(return_value=False)
++    assert not progress.progress_step(core, original)
++    core.input_queue.get.assert_called_once_with(timeout=progress.FIRST_WAVE_INPUT_WAIT_SECONDS)
++    assert 0 < progress.FIRST_WAVE_INPUT_WAIT_SECONDS <= 0.005
++    core._process_input_queue.assert_called_once()
++    original.assert_called_once_with(core)
++
++
++@pytest.mark.parametrize("incoming", [False, True])
++def test_first_wave_actual_input_drain_cannot_enter_blocking_branch(incoming):
++    import queue
++
++    package = importlib.util.find_spec("vllm")
++    path = Path(package.origin).parent / "v1/engine/core.py"
++    assert hashlib.sha256(path.read_bytes()).hexdigest() == progress.ENGINE_CORE_SHA256
++    functions = [
++        node
++        for node in ast.walk(ast.parse(path.read_text()))
++        if isinstance(node, ast.FunctionDef) and node.name in {"has_work", "_process_input_queue"}
++    ]
++    assert len(functions) == 2
++    namespace = dict(queue=queue)
++    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])), str(path), "exec"), namespace)
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: bool(core.scheduler.requests)
++    core.has_work = lambda: namespace["has_work"](core)
++    core.is_running = Mock(side_effect=AssertionError("must not block for input"))
++    core.input_queue = queue.Queue()
++    if incoming:
++        core.input_queue.put(("add", "r1"))
++    core._handle_client_request = lambda _, key: core.scheduler.requests.update({key: request()})
++    core._process_input_queue = lambda: namespace["_process_input_queue"](core)
++    original = Mock(return_value=False)
++    assert not progress.progress_step(core, original)
++    assert ("r1" in core.scheduler.requests) is incoming
++    original.assert_called_once()
++
++
++def test_pause_arriving_at_first_wave_handoff_is_handled_by_original():
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: False
++    core.input_queue = NS(get=Mock(return_value=("utility", "pause")))
++    core._handle_client_request = lambda *_: setattr(core, "pending_pause", True)
++    core._process_input_queue = Mock()
++
++    def original(e):
++        assert e.pending_pause
++        return False
++
++    assert not progress.progress_step(core, original)
++
++
++@pytest.mark.parametrize("kind", ["add", "abort", "start_wave", "utility", "wakeup"])
++def test_first_wave_messages_keep_original_dispatch(kind):
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: False
++    payload = object()
++    core.input_queue = NS(get=Mock(return_value=(kind, payload)))
++    events = []
++    core._handle_client_request = lambda *item: events.append(item)
++    core._process_input_queue = lambda: events.append("drain")
++    original = Mock(side_effect=lambda _: (events.append("original"), False)[1])
++    assert not progress.progress_step(core, original)
++    assert events == [(kind, payload), "drain", "original"]
++    core.input_queue.get.assert_called_once_with(timeout=progress.FIRST_WAVE_INPUT_WAIT_SECONDS)
++
++
++@pytest.mark.parametrize("where", ["queue", "handler"])
++def test_first_wave_unexpected_errors_propagate_without_forward(where):
++    core = engine()
++    core.engines_running, core.step_counter, core.pending_pause = True, 0, False
++    core.scheduler.has_requests = lambda: False
++    core.input_queue = NS(get=Mock(return_value=("add", "r1")))
++    core._handle_client_request = Mock()
++    core._process_input_queue = Mock()
++    if where == "queue":
++        core.input_queue.get.side_effect = RuntimeError("receiver failed")
++    else:
++        core._handle_client_request.side_effect = RuntimeError("receiver failed")
++    original = Mock()
++    with pytest.raises(RuntimeError, match="receiver failed"):
++        progress.progress_step(core, original)
++    original.assert_not_called()
++    core._process_input_queue.assert_not_called()
+diff --git a/tests/ut/distributed/ascend_store/test_registered_transfer_plan.py b/tests/ut/distributed/ascend_store/test_registered_transfer_plan.py
+new file mode 100644
+--- /dev/null
++++ b/tests/ut/distributed/ascend_store/test_registered_transfer_plan.py
+@@ -0,0 +1,106 @@
++"""Wire compatibility and protection boundaries for registered compact plans."""
++import random
++
++import pytest
++
++import tests.ut.distributed.ascend_store._mock_deps  # noqa: F401
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.metadata import (
++    ChunkedTokenDatabase,
++    KeyMetadata,
++)
++
++
++def database(namespace='a' * 64, blocks=8, ranges=((1000, 2024),),
++             bases=(1000, 1008, 1032), lengths=(8, 8, 4), strides=(128, 128, 128)):
++    db = ChunkedTokenDatabase([KeyMetadata('model', 0, 0, 0, cache_namespace=namespace)], [16], None)
++    db.set_group_buffers({0: list(bases)}, {0: list(lengths)}, {0: list(strides)},
++                         registered_regions=ranges, num_blocks=blocks,
++                         group_layer_cache_entry_offsets={0: [0, 2, 3]})
++    return db
++
++
++def wire(addresses, lengths):
++    return [offset for address, length in zip(addresses, lengths, strict=True)
++            for offset in range(address, address + length)]
++
++
++@pytest.mark.parametrize('block', [0, 3, 7])
++def test_full_pages_preserve_order_and_gaps(block):
++    db = database()
++    original = [1000 + 128 * block, 1008 + 128 * block, 1032 + 128 * block]
++    addresses, sizes, actual = db.prepare_value(0, 16, [block])
++    assert actual == block and sizes == [16, 4]
++    assert wire(addresses, sizes) == wire(original, [8, 8, 4])
++    assert db.group_block_len == {0: [8, 8, 4]}
++    assert db.group_layer_cache_entry_offsets == {0: [0, 2, 3]}
++    # Backend mutation of returned vectors cannot corrupt the next transfer.
++    addresses.clear()
++    sizes.clear()
++    assert db.prepare_value(0, 16, [block])[1] == [16, 4]
++
++
++@pytest.mark.parametrize('count', [1, 7, 15])
++def test_partial_page_preserves_per_component_truncation(count):
++    db = database(lengths=(7, 9, 4), bases=(1000, 1007, 1032))
++    assert db.prepare_value(0, count, [2]) == (
++        [1256, 1263, 1288], [int(7 / 16 * count), int(9 / 16 * count), int(4 / 16 * count)], 2)
++
++
++@pytest.mark.parametrize('kwargs', [
++    {'namespace': None}, {'ranges': None}, {'blocks': None},
++    {'ranges': ((1000, 1904),)},  # last physical page exceeds this registration
++    {'ranges': ((1000, 1008), (1008, 2024))},  # adjacency across allocations
++    {'strides': (128, 129, 128)},
++])
++def test_missing_proof_does_not_merge(kwargs):
++    assert database(**kwargs).prepare_value(0, 16, [0])[1] == [8, 8, 4]
++
++
++def test_registration_replacement_discards_old_addresses():
++    db = database()
++    db.set_group_buffers({0: [4000, 4010]}, {0: [10, 2]}, {0: [64, 64]},
++                         registered_regions=[(4000, 4524)], num_blocks=8)
++    assert db.prepare_value(0, 16, [7]) == ([4448], [12], 7)
++    db.set_group_buffers({0: [6000]}, {0: [9]}, {0: [64]})
++    assert db.prepare_value(0, 16, [2]) == ([6128], [9], 2)
++    assert db._full_block_transfer_plans == {}
++
++
++def test_role_and_unaligned_ranges_keep_legacy_path():
++    db = database()
++    assert db.prepare_value(0, 16, [0], cache_role='state') == ([], [], 0)
++    assert db.prepare_value(1, 17, [0])[1] == [8, 8, 4]
++    assert db.prepare_value(32, 48, [0]) == ([], [], 0)
++
++
++def test_groups_are_not_merged():
++    db = ChunkedTokenDatabase([KeyMetadata('model', 0, 0, 0, cache_namespace='a' * 64),
++                               KeyMetadata('model', 0, 0, 0, 1, cache_namespace='a' * 64)], [16, 32], None)
++    db.set_group_buffers({0: [1000], 1: [1008]}, {0: [8], 1: [8]}, {0: [64], 1: [64]},
++                         registered_regions=[(1000, 1512)], num_blocks=8)
++    assert db.prepare_value(0, 16, [1], 0) == ([1064], [8], 1)
++    assert db.prepare_value(0, 32, [1], 1) == ([1072], [8], 1)
++
++
++def test_randomized_wire_and_padding_preservation():
++    rng = random.Random(642081)
++    for _ in range(500):
++        count = rng.randrange(1, 18)
++        lengths = [rng.randrange(1, 33) for _ in range(count)]
++        bases = [1000]
++        for size in lengths[:-1]:
++            bases.append(bases[-1] + size + rng.choice([0, 0, 0, 2, 11]))
++        stride = bases[-1] + lengths[-1] - 1000 + 37
++        blocks = rng.randrange(2, 12)
++        db = database(blocks=blocks, ranges=[(1000, 1000 + blocks * stride)],
++                      bases=bases, lengths=lengths, strides=[stride] * count)
++        for block in {0, blocks - 1, rng.randrange(blocks)}:
++            original = [base + block * stride for base in bases]
++            actual, sizes, _ = db.prepare_value(0, 16, [block])
++            expected_wire = wire(original, lengths)
++            assert wire(actual, sizes) == expected_wire
++            # A simulated GET must leave every unrelated byte untouched.
++            backing = bytearray([0xA5] * (blocks * stride))
++            for offset in wire(actual, sizes):
++                backing[offset - 1000] = 0x5A
++            assert {i + 1000 for i, byte in enumerate(backing) if byte != 0xA5} == set(expected_wire)
+diff --git a/vllm_ascend/compilation/task_queue.py b/vllm_ascend/compilation/task_queue.py
+new file mode 100644
+--- /dev/null
++++ b/vllm_ascend/compilation/task_queue.py
+@@ -0,0 +1,27 @@
++# SPDX-License-Identifier: Apache-2.0
++# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
++"""Queue level transition for the single-threaded startup capture phase."""
++
++from contextlib import contextmanager
++
++
++@contextmanager
++def startup_graph_task_queue(npu):
++    """Capture at level 1, then restore the requested eager/replay level.
++
++    Torch NPU rejects level 2 during graph capture. Its public setter drains
++    pending operations, so this scope belongs around the entire startup
++    capture phase, with no concurrent submissions or active serving requests.
++    Never use it per forward or while capturing an existing graph.
++    """
++    mode = npu.get_task_queue_enable()
++    if mode != 2:
++        yield
++        return
++    if npu.is_current_stream_capturing():
++        raise RuntimeError("Task queue level cannot change during graph capture")
++    npu.set_task_queue_enable(1)
++    try:
++        yield
++    finally:
++        npu.set_task_queue_enable(mode)
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+@@ -14,6 +14,7 @@
+     KVConnectorBase_V1,
+     KVConnectorMetadata,
+     KVConnectorRole,
++    KVConnectorTransferResults,
+     SupportsHMA,
+ )
+ from vllm.distributed.kv_transfer.kv_connector.v1.metrics import (
+@@ -139,6 +140,12 @@
+         if role == KVConnectorRole.SCHEDULER:
+             assert kv_cache_config is not None
+             self.connector_scheduler = KVPoolScheduler(vllm_config, self.use_layerwise, kv_cache_config)
++            if self.connector_scheduler.requires_load_completion is True:
++                # Only the synchronous C8 protocol has this load-only stage.
++                from vllm_ascend.patch.platform.patch_compact_load_progress import install
++
++                enabled = install(vllm_config)
++                logger.info("Compact C8 same-iteration receive progress: %s", enabled)
+         else:
+             self.connector_worker = KVPoolWorker(
+                 vllm_config,
+@@ -408,6 +415,14 @@
+                 self._current_step_has_real_forward = False
+         done_sending, done_recving = self.connector_worker.get_finished(finished_req_ids, metadata)
+         return done_sending, done_recving
++
++    def get_transfer_results(self, finished_req_ids: set[str]) -> KVConnectorTransferResults:
++        sending, recving = self.get_finished(finished_req_ids)
++        assert self.connector_worker is not None
++        failed = self.connector_worker.take_failed_recving()
++        return KVConnectorTransferResults(
++            finished_sending=sending, finished_recving=recving | failed, failed_recving=failed,
++        )
+ 
+     def get_block_ids_with_load_errors(self) -> set[int]:
+         """Return KV block IDs that failed to load on the worker."""
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py
+@@ -17,6 +17,7 @@
+     BatchResultShapeError,
+     get_scheduler_device_id,
+     parse_qos_from_extra_config,
++    require_aligned_batch_results,
+ )
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend.layerwise_keys import LayerwiseKeyBuilder
+ 
+@@ -205,6 +206,9 @@
+         _validate_device_ub_qos()
+         self.device_id = torch.npu.current_device() if device_id is None else device_id
+         self._init_bm = init_bm
++        self.strict_cache_protocol = bool((extra_config or {}).get("cache_compatibility_manifest"))
++        self._transfer_stats: dict[str, int] = {}
++        self._transfer_stats_lock = threading.Lock()
+         self._lazy_init = lazy_init and _is_device_sdma()
+         # Lazy initialization can be triggered independently by each DP rank.
+         self._dp_init_barrier = dp_init_barrier and parallel_config.data_parallel_size > 1 and not self._lazy_init
+@@ -447,81 +451,51 @@
+             return [0] * len(keys)
+         return finish(keys, results)
+ 
+-    def get(
+-        self,
+-        key: list[str],
+-        addr: list[list[int]],
+-        size: list[list[int]],
+-    ):
+-        if self._lazy_init and not self._store_initialized:
+-            logger.error(
+-                "Failed to get %d keys out of %d. Store is not initialized; "
+-                "call put() first to trigger initialization.",
+-                len(key),
+-                len(key),
+-            )
+-            logger.debug("Failed to get key details. keys=%s", key)
+-            return
+-        assert self.store is not None
++    def _record_transfer(self, operation, sizes, results):
++        with self._transfer_stats_lock:
++            for lengths, result in zip(sizes, results, strict=True):
++                state = "success" if result == 0 else "failed"
++                for suffix, count in (("bytes", sum(lengths)), ("keys", 1)):
++                    name = f"{operation}_{state}_{suffix}"
++                    self._transfer_stats[name] = self._transfer_stats.get(name, 0) + count
++
++    def drain_transfer_stats(self):
++        with self._transfer_stats_lock:
++            stats, self._transfer_stats = self._transfer_stats, {}
++            return stats
++
++    def get(self, key: list[str], addr: list[list[int]], size: list[list[int]]):
++        # A restarted worker must be able to read a persistent pool before its
++        # first local save. Initialization also registers the pending buffers.
+         try:
+-            res = self.store.batch_get_into_layers(key, addr, size, MmcDirect.COPY_G2L.value)
+-            failed_codes = [int(value) for value in res if value != 0]
+-            failed_count = len(failed_codes)
+-            if failed_count:
+-                error_codes = sorted(set(failed_codes))
+-                logger.error(
+-                    "Failed to get %d keys out of %d. error_codes=%s. Check key existence and memory state.",
+-                    failed_count,
+-                    len(key),
+-                    error_codes,
+-                )
+-                logger.debug("Failed to get key details. keys=%s, result=%s", key, res)
+-            return res
+-        except Exception as e:
+-            logger.error(
+-                "Failed to get %d keys out of %d. type=%s, error=%s. Check store state and network.",
+-                len(key),
+-                len(key),
+-                type(e).__name__,
+-                e,
+-            )
+-            logger.debug("Failed to get key details. keys=%s", key)
+-            return None
+-
+-    def put(
+-        self,
+-        key: list[str],
+-        addr: list[list[int]],
+-        size: list[list[int]],
+-    ):
+-        self.ensure_initialized()
+-        assert self.store is not None
++            self.ensure_initialized()
++            assert self.store is not None
++            results = require_aligned_batch_results(
++                "MemCache GET", key,
++                self.store.batch_get_into_layers(key, addr, size, MmcDirect.COPY_G2L.value),
++            )
++        except Exception as exc:
++            logger.error("MemCache GET failed for %d objects: %s: %s", len(key), type(exc).__name__, exc)
++            results = [-1] * len(key)
++        self._record_transfer("get", size, results)
++        return results
++
++    def put(self, key: list[str], addr: list[list[int]], size: list[list[int]]):
+         try:
+-            res = self.store.batch_put_from_layers(key, addr, size, MmcDirect.COPY_L2G.value)
+-            failed_codes = [int(value) for value in res if value != 0]
+-            failed_count = len(failed_codes)
+-            if failed_count:
+-                error_codes = sorted(set(failed_codes))
+-                logger.error(
+-                    "Failed to put %d keys out of %d. error_codes=%s. Check memory and store capacity.",
+-                    failed_count,
+-                    len(key),
+-                    error_codes,
+-                )
+-                logger.debug("Failed to put key details. keys=%s, result=%s", key, res)
+-                if self._lazy_init:
+-                    logger.warning("First DSV4(compress) request failure is expected. This is normal behavior.")
+-        except Exception as e:
+-            logger.error(
+-                "Failed to put %d keys out of %d. type=%s, error=%s. Check store state and memory.",
+-                len(key),
+-                len(key),
+-                type(e).__name__,
+-                e,
+-            )
+-            logger.debug("Failed to put key details. keys=%s", key)
+-            if self._lazy_init:
+-                logger.warning("First DSV4(compress) request failure is expected. This is normal behavior.")
++            self.ensure_initialized()
++            assert self.store is not None
++            results = require_aligned_batch_results(
++                "MemCache PUT", key,
++                self.store.batch_put_from_layers(key, addr, size, MmcDirect.COPY_L2G.value),
++            )
++        except Exception as exc:
++            logger.error("MemCache PUT failed for %d objects: %s: %s", len(key), type(exc).__name__, exc)
++            results = [-1] * len(key)
++        self._record_transfer("put", size, results)
++        if any(result != 0 for result in results):
++            logger.warning("MemCache PUT rejected %d/%d objects; incomplete objects are not cache hits",
++                         sum(result != 0 for result in results), len(key))
++        return results
+ 
+     def put_from(
+         self,
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/cache_compatibility.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/cache_compatibility.py
+new file mode 100644
+--- /dev/null
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/cache_compatibility.py
+@@ -0,0 +1,271 @@
++"""Content identity and byte contracts for the compact shared-KV protocol.
++
++This module is shared by scheduler, worker and deployment tools. It deliberately
++has no device imports: identity must not depend on an allocator or a DP rank.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import importlib.util
++import json
++from collections.abc import Mapping
++from dataclasses import fields, is_dataclass
++from pathlib import Path
++from typing import Any
++
++SHAREDKV_CACHE_PROTOCOL = "sharedkv-c8-memcache-v1"
++SHAREDKV_COMPUTE_REVISION = "v65-p101-stage1"
++SHAREDKV_ENCODING = "sharedkv-c8-v1"
++PROTOCOL_SOURCE_FILES = (
++    "cache_compatibility.py", "ascend_store_connector.py", "pool_scheduler.py",
++    "pool_worker.py", "metadata.py", "kv_transfer.py", "metrics.py", "backend/memcache_backend.py",
++    "../../../../patch/platform/patch_compact_load_progress.py",
++    "../../../../worker/compact_dp_metadata.py",
++    "../../../../worker/model_runner_v1.py",
++    "../../../../compilation/task_queue.py",
++)
++
++
++def patch_source_hashes() -> dict[str, str]:
++    root = Path(__file__).parent
++    return {name: content_digest(root / name) for name in PROTOCOL_SOURCE_FILES}
++
++
++def validate_memcache_config(path: str | Path) -> None:
++    settings = {}
++    with open(path, encoding="utf-8") as stream:
++        for line in stream:
++            key, separator, value = line.partition("=")
++            if separator:
++                settings[key.strip()] = value.strip()
++    required = {"ock.mmc.local_service.protocol": "device_sdma",
++                "ock.mmc.local_service.dram.size": "0GB",
++                "ock.mmc.local_service.storage.enabled": "false"}
++    for key, value in required.items():
++        if settings.get(key) != value:
++            raise ValueError(f"Compact C8 model clients require {key}={value}")
++
++
++def canonical_digest(value: Any) -> str:
++    return hashlib.sha256(
++        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
++    ).hexdigest()
++
++
++def content_digest(path: str | Path) -> str:
++    digest = hashlib.sha256()
++    with open(path, "rb") as stream:
++        for data in iter(lambda: stream.read(8 * 1024 * 1024), b""):
++            digest.update(data)
++    return digest.hexdigest()
++
++
++def load_manifest(path: str | Path) -> dict[str, Any]:
++    with open(path, encoding="utf-8") as stream:
++        manifest = json.load(stream)
++    expected = {
++        "format_version": 1,
++        "protocol": SHAREDKV_CACHE_PROTOCOL,
++        "encoding": SHAREDKV_ENCODING,
++        "compute_revision": SHAREDKV_COMPUTE_REVISION,
++        "layout": "compact-c8-v1",
++    }
++    for name, value in expected.items():
++        if manifest.get(name) != value:
++            raise ValueError(f"Incompatible cache manifest {name}: expected {value!r}")
++    for name in ("model_digest", "scales_digest"):
++        value = manifest.get(name)
++        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
++            raise ValueError(f"Invalid cache manifest {name}")
++    identity = {name: manifest[name] for name in (*expected, "model_digest", "scales_digest")}
++    if manifest.get("identity_digest") != canonical_digest(identity):
++        raise ValueError("Cache manifest identity checksum mismatch")
++    # Deployment freezes the complete paired Python patch. Checking only a
++    # version constant could accidentally accept a partially applied patch.
++    if manifest.get("patch_sources_sha256") != patch_source_hashes():
++        raise ValueError("Paired vLLM-Ascend patch source checksum mismatch")
++    return manifest
++
++
++def validate_configuration(config: Any, manifest: Mapping[str, Any]) -> None:
++    """Fail closed for combinations outside the validated first release."""
++    transfer = config.kv_transfer_config
++    extra = transfer.kv_connector_extra_config
++    parallel = config.parallel_config
++    requirements = {
++        "data_parallel_size": 2, "data_parallel_size_local": 1,
++        "tensor_parallel_size": 16, "pipeline_parallel_size": 1,
++        "prefill_context_parallel_size": 1, "decode_context_parallel_size": 1,
++    }
++    for name, expected in requirements.items():
++        if getattr(parallel, name, None) != expected:
++            raise ValueError(f"{SHAREDKV_CACHE_PROTOCOL} requires {name}={expected}")
++    if not parallel.enable_expert_parallel:
++        raise ValueError("Compact C8 MemCache requires expert parallelism")
++    if (transfer.kv_connector != "AscendStoreConnector" or transfer.kv_role != "kv_both"
++            or extra.get("backend") != "memcache" or extra.get("use_layerwise", False)
++            or extra.get("load_async", False) or extra.get("consumer_is_to_load", False)
++            or extra.get("consumer_is_to_put", False)):
++        raise ValueError("Compact C8 requires AscendStoreConnector/kv_both/memcache, synchronous non-layerwise I/O")
++    if transfer.kv_load_failure_policy != "fail":
++        raise ValueError("Compact C8 requires kv_load_failure_policy=fail")
++    speculative = config.speculative_config
++    if (speculative is None or speculative.method != "dspark"
++            or speculative.num_speculative_tokens != 5):
++        raise ValueError("Compact C8 MemCache currently requires DSpark5")
++    # Only small metadata files are checked here. Weight content is hashed and
++    # frozen once by the deployment preparation tool, on both nodes.
++    model_root = Path(config.model_config.model)
++    for relative, expected_digest in manifest.get("metadata_files", {}).items():
++        relative_path = Path(relative)
++        if relative_path.is_absolute() or ".." in relative_path.parts:
++            raise ValueError("Manifest model paths must be relative")
++        if content_digest(model_root / relative_path) != expected_digest:
++            raise ValueError(f"Model metadata changed: {relative}")
++
++
++def _semantic_value(value: Any) -> Any:
++    if is_dataclass(value):
++        # Allocator padding/strides and physical capacity are not wire identity.
++        excluded = {"num_blocks", "page_size_padded", "alignment", "indexes_kv_by_block_stride"}
++        return {"type": type(value).__name__, **{
++            field.name: _semantic_value(getattr(value, field.name))
++            for field in fields(value) if field.name not in excluded
++        }}
++    if isinstance(value, Mapping):
++        return {str(key): _semantic_value(item) for key, item in sorted(value.items())}
++    if isinstance(value, (list, tuple)):
++        return [_semantic_value(item) for item in value]
++    if value is None or isinstance(value, (str, bool, int, float)):
++        return value
++    # torch.dtype (no torch dependency here).
++    if type(value).__name__ == "dtype":
++        return str(value)
++    raise TypeError(f"Unsupported semantic cache field: {type(value).__name__}")
++
++
++def cache_schema(kv_cache_config: Any) -> list[dict[str, Any]]:
++    groups = []
++    for group_id, group in enumerate(kv_cache_config.kv_cache_groups):
++        specs = getattr(group.kv_cache_spec, "kv_cache_specs", None)
++        components = [{"layer": name, "spec": _semantic_value(specs[name] if specs else group.kv_cache_spec)}
++                      for name in sorted(group.layer_names)]
++        groups.append({"group": group_id, "components": components})
++    return groups
++
++
++def cache_namespace(config: Any, kv_cache_config: Any) -> str | None:
++    path = config.kv_transfer_config.kv_connector_extra_config.get("cache_compatibility_manifest")
++    if path is None:
++        return None
++    manifest = load_manifest(path)
++    validate_configuration(config, manifest)
++    parallel = config.parallel_config
++    return canonical_digest({
++        "identity": manifest["identity_digest"], "groups": cache_schema(kv_cache_config),
++        "sharding": {name: getattr(parallel, name) for name in (
++            "tensor_parallel_size", "pipeline_parallel_size", "prefill_context_parallel_size",
++            "decode_context_parallel_size")},
++    })
++
++
++def object_key(metadata: Any, chunk_hash: str, layer_id: int | None = None) -> str:
++    digest = canonical_digest({
++        "tp": metadata.head_or_tp_rank, "dcp": metadata.dcp_rank, "pp": metadata.pp_rank,
++        "group": metadata.kv_cache_group_id, "role": metadata.cache_role,
++        "family": metadata.cache_family, "token_hash": chunk_hash, "layer": layer_id,
++    })
++    return f"asc8v1:{metadata.cache_namespace}:{digest}"
++
++
++class ObjectKeyEncoder:
++    """Reuse fixed semantic fields while preserving the exact v1 key bytes.
++
++    Each database owns encoders for its finite group/rank descriptors. No
++    token hashes or per-request results are retained. The prefix hash is only
++    copied, never mutated after construction.
++    """
++
++    def __init__(self, metadata: Any, layer_id: int | None = None):
++        value = {
++            "tp": metadata.head_or_tp_rank,
++            "dcp": metadata.dcp_rank,
++            "pp": metadata.pp_rank,
++            "group": metadata.kv_cache_group_id,
++            "role": metadata.cache_role,
++            "family": metadata.cache_family,
++            "token_hash": None,
++            "layer": layer_id,
++        }
++        serialized = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
++        before, self._after = serialized.split(b'"token_hash":null')
++        self._prefix = hashlib.sha256(before + b'"token_hash":')
++        self._namespace = f"asc8v1:{metadata.cache_namespace}:"
++
++    def encode(self, chunk_hash: str) -> str:
++        if isinstance(chunk_hash, str) and chunk_hash.isascii() and chunk_hash.isalnum():
++            encoded = b'"' + chunk_hash.encode() + b'"'
++        else:
++            encoded = json.dumps(chunk_hash, separators=(",", ":"), allow_nan=False).encode()
++        digest = self._prefix.copy()
++        digest.update(encoded)
++        digest.update(self._after)
++        return self._namespace + digest.hexdigest()
++
++
++def describe_block_view(cache: Any, num_blocks: int) -> tuple[int, int, int, int]:
++    """Return valid bytes, physical stride, spanned range and kernel scale.
++
++    A native scatter entry is contiguous. Reject layouts whose inner padding
++    cannot be expressed as that entry instead of copying unrelated bytes.
++    """
++    if num_blocks <= 0 or cache.shape[0] % num_blocks:
++        raise ValueError("Invalid compact block count")
++    scale = cache.shape[0] // num_blocks
++    if scale != 1 or not cache[0].is_contiguous():
++        raise ValueError("Compact transfer requires one contiguous component per logical page")
++    length = cache[0].numel() * cache.element_size()
++    stride = cache.stride(0) * cache.element_size()
++    region = (num_blocks - 1) * stride + length
++    storage = cache.untyped_storage()
++    if (length <= 0 or stride < length or cache.data_ptr() < storage.data_ptr()
++            or cache.data_ptr() + region > storage.data_ptr() + storage.nbytes()):
++        raise ValueError("Compact transfer exceeds backing allocation")
++    return length, stride, region, scale
++
++
++def key_info_matches(info: Any, expected_bytes: int) -> bool:
++    if info is None:
++        return False
++    try:
++        gvas = info.gva_list()
++        return int(info.size()) == expected_bytes and bool(gvas) and all(int(gva) > 0 for gva in gvas)
++    except (AttributeError, TypeError, ValueError):
++        return False
++
++
++def write_worker_audit(directory: str | Path, worker: Any) -> None:
++    """Record what every worker actually imported and registered."""
++    module_names = ("npu_sparse_attn_sharedkv_int8", "vllm_ascend", "vllm")
++    modules = {name: str(importlib.util.find_spec(name).origin) for name in module_names}
++    plugin_root = Path(modules["npu_sparse_attn_sharedkv_int8"]).parent
++    native = {path.name: content_digest(path) for path in (plugin_root / "_native").glob("*.so")}
++    components = []
++    for name, caches in worker.kv_caches.items():
++        for index, cache in enumerate(worker._as_cache_tuple(caches)):
++            length, stride, span, _ = describe_block_view(cache, worker.num_blocks)
++            components.append({"layer": name, "component": index, "dtype": str(cache.dtype),
++                               "shape": list(cache.shape[1:]), "bytes": length, "stride": stride,
++                               "base": cache.data_ptr(), "span": span,
++                               "storage": cache.untyped_storage().data_ptr()})
++    record = {"protocol": SHAREDKV_CACHE_PROTOCOL, "namespace": worker.cache_namespace,
++              "dp_rank": worker.vllm_config.parallel_config.data_parallel_rank,
++              "tp_rank": worker.tp_rank, "modules": modules, "native_sha256": native,
++              "num_blocks": worker.num_blocks, "components": components,
++              "protocol_source_sha256": content_digest(__file__),
++              "worker_source_sha256": content_digest(importlib.util.find_spec(type(worker).__module__).origin)}
++    directory = Path(directory)
++    directory.mkdir(parents=True, exist_ok=True)
++    target = directory / f"dp{record['dp_rank']}-tp{worker.tp_rank}.json"
++    target.write_text(json.dumps(record, indent=2) + "\n")
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+@@ -1122,6 +1122,8 @@
+                 chunk_filter=chunk_filter,
+                 shard_rank=self.pcp_rank * tp_replicas + self.tp_rank % tp_replicas,
+                 shard_size=self.pcp_size * tp_replicas,
++                **({"chunk_mask": group_store_mask}
++                   if self.token_database.metadata[group_id].cache_namespace is not None else {}),
+             )
+             for start, end, key, block_hash, block_id in iterator:
+                 starts.append(start)
+@@ -1213,7 +1215,11 @@
+                 )
+             if current_event is not None:
+                 current_event.synchronize()
+-            self.m_store.put(keys, addrs, sizes)
++            put_results = self.m_store.put(keys, addrs, sizes)
++            if getattr(self.m_store, "strict_cache_protocol", False):
++                put_results = require_aligned_batch_results("compact PUT", keys, put_results)
++                if any(result != 0 for result in put_results):
++                    continue
+             if self.enable_kv_event and stored_events:
+                 self.update_kv_event(stored_events)
+ 
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+@@ -3,6 +3,7 @@
+ import math
+ from collections.abc import Callable, Iterable, Mapping, Sequence
+ from dataclasses import dataclass, field
++from itertools import compress, islice
+ from typing import Any, cast
+ 
+ import numpy as np
+@@ -15,6 +16,7 @@
+ 
+ from vllm_ascend.core.kv_cache_interface import is_prefix_cacheable
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.attention_fence import AttentionComputeStartGate
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.cache_compatibility import ObjectKeyEncoder, object_key
+ 
+ 
+ def is_kv_save_role(kv_role: str, consumer_is_to_put: bool) -> bool:
+@@ -130,6 +132,7 @@
+     cache_role: str = "kv"
+     """ Family name for compress-aware hybrid cache layouts """
+     cache_family: str = "default"
++    cache_namespace: str | None = None
+ 
+ 
+ @dataclass(order=True)
+@@ -147,11 +150,14 @@
+                 self.key_metadata.kv_cache_group_id,
+                 self.key_metadata.cache_role,
+                 self.key_metadata.cache_family,
++                self.key_metadata.cache_namespace,
+                 self.chunk_hash,
+             )
+         )
+ 
+     def to_string(self):
++        if self.key_metadata.cache_namespace is not None:
++            return object_key(self.key_metadata, self.chunk_hash)
+         return (
+             f"{self.key_metadata.model_name}"
+             f"@dcp:{self.key_metadata.dcp_rank}"
+@@ -198,6 +204,8 @@
+         )
+ 
+     def to_string(self):
++        if self.key_metadata.cache_namespace is not None:
++            return object_key(self.key_metadata, self.chunk_hash, self.layer_id)
+         return (
+             f"{self.key_metadata.model_name}"
+             f"@dcp:{self.key_metadata.dcp_rank}"
+@@ -357,7 +365,42 @@
+         self.partitions = partitions
+         self.hash_block_size = self.block_size[0] if hash_block_size is None else hash_block_size
+         self._key_prefix_cache: dict[tuple[int, str, str], str] = {}
++        self._object_key_encoders: dict[tuple, ObjectKeyEncoder] = {}
+         self.cache_coordinator: Any | None = None
++        self._full_block_transfer_plans: dict[int, tuple[tuple[int, int, int], ...]] = {}
++        self._transfer_plan_num_blocks = 0
++
++    def namespaced_key(
++        self,
++        chunk_hash: str,
++        group_id: int,
++        *,
++        head_or_tp_rank: int | None = None,
++        dcp_rank: int | None = None,
++        pp_rank: int | None = None,
++    ) -> str:
++        metadata = self.metadata[group_id]
++        family = self.group_cache_families.get("kv", {}).get(group_id, "default")
++        head = metadata.head_or_tp_rank if head_or_tp_rank is None else head_or_tp_rank
++        dcp = metadata.dcp_rank if dcp_rank is None else dcp_rank
++        pp = metadata.pp_rank if pp_rank is None else pp_rank
++        signature = (metadata.cache_namespace, group_id, head, dcp, pp, family)
++        encoder = self._object_key_encoders.get(signature)
++        if encoder is None:
++            encoder = ObjectKeyEncoder(
++                KeyMetadata(
++                    metadata.model_name,
++                    head,
++                    dcp,
++                    pp,
++                    group_id,
++                    "kv",
++                    family,
++                    metadata.cache_namespace,
++                )
++            )
++            self._object_key_encoders[signature] = encoder
++        return encoder.encode(chunk_hash)
+ 
+     def _get_key_prefix(
+         self,
+@@ -434,6 +477,7 @@
+                 kv_cache_group_id=kv_cache_group_id,
+                 cache_role=cache_role,
+                 cache_family=cache_family,
++                cache_namespace=group_metadata.cache_namespace,
+             ),
+             chunk_hash,
+         )
+@@ -452,6 +496,8 @@
+         group_cache_families: dict[int, str] | None = None,
+         group_num_layers: dict[int, int] | None = None,
+         group_layer_cache_entry_offsets: dict[int, list[int]] | None = None,
++        registered_regions: Sequence[tuple[int, int]] | None = None,
++        num_blocks: int | None = None,
+     ) -> None:
+         if cache_role == "state":
+             # Keep the interface for future explicit state groups, but this
+@@ -462,9 +508,41 @@
+             self.group_block_len = group_block_len
+             self.group_block_stride = group_block_stride or {}
+             self.group_layer_cache_entry_offsets = group_layer_cache_entry_offsets or {}
++            # Physical plans are rebuilt on every registration. Logical component
++            # metadata and layer offsets remain unchanged for keys and partial pages.
++            self._full_block_transfer_plans = {}
++            self._transfer_plan_num_blocks = num_blocks or 0
++            if registered_regions and isinstance(num_blocks, int) and num_blocks > 0:
++                for group_id, bases in group_kv_caches_base_addr.items():
++                    if group_id >= len(self.metadata) or self.metadata[group_id].cache_namespace is None:
++                        continue
++                    lengths = group_block_len.get(group_id, [])
++                    strides = self.group_block_stride.get(group_id)
++                    if not lengths or (strides and len(strides) != len(lengths)):
++                        continue
++                    plan: list[tuple[int, int, int]] = []
++                    for index, base in enumerate(bases):
++                        length = lengths[index % len(lengths)]
++                        stride = strides[index % len(lengths)] if strides else length
++                        if plan:
++                            previous_base, previous_length, previous_stride = plan[-1]
++                            # Same stride makes adjacency invariant across physical
++                            # pages. One registered allocation must contain the
++                            # entire merged span, including the last physical page.
++                            if (length > 0 and previous_length > 0 and stride >= 0
++                                    and stride == previous_stride
++                                    and previous_base + previous_length == base
++                                    and any(lo <= previous_base
++                                            and base + length + (num_blocks - 1) * stride <= hi
++                                            for lo, hi in registered_regions)):
++                                plan[-1] = (previous_base, previous_length + length, stride)
++                                continue
++                        plan.append((base, length, stride))
++                    self._full_block_transfer_plans[group_id] = tuple(plan)
+         if group_cache_families is not None:
+             self.group_cache_families[cache_role] = group_cache_families.copy()
+             self._key_prefix_cache.clear()
++            self._object_key_encoders.clear()
+         if group_num_layers is not None:
+             self.group_num_layers[cache_role] = group_num_layers.copy()
+ 
+@@ -496,6 +574,11 @@
+             if block_idx >= len(block_ids):
+                 return addr_list, size_list, 0
+             block_id = block_ids[block_idx]
++        plan = self._full_block_transfer_plans.get(kv_cache_group_id)
++        if (cache_role == "kv" and plan is not None and start % group_block_size == 0
++                and end - start == group_block_size and 0 <= block_id < self._transfer_plan_num_blocks):
++            return ([base + block_id * stride for base, _, stride in plan],
++                    [length for _, length, _ in plan], block_id)
+         group_addrs, group_block_len, group_block_stride = self._get_group_buffers(kv_cache_group_id, cache_role)
+         length = len(group_block_len)
+         if length == 0:
+@@ -545,6 +628,7 @@
+         chunk_filter: Callable[[int], bool] | None = None,
+         shard_rank: int | None = None,
+         shard_size: int | None = None,
++        chunk_mask: Sequence[bool] | None = None,
+     ) -> Iterable[tuple[int, int, BlockHash | str, int | None]]:
+         # Private circular state has no prefix key, even when its block size
+         # happens to be divisible by the request's hashing unit.
+@@ -560,7 +644,19 @@
+         block_id_offset = max(num_logical_blocks - len(block_ids), 0) if block_ids is not None else 0
+         candidate_index = 0
+ 
+-        for chunk_id in range(num_logical_blocks):
++        first_chunk = 0
++        if self.metadata[kv_cache_group_id].cache_namespace is not None:
++            # C8 waits for PUT completion before page reuse. Walking all old
++            # prefix blocks on every step would put that CPU work on the
++            # forward's critical path even when there is nothing new to save.
++            first_chunk = max(0, cdiv(mask_num, logical_block_size), block_id_offset)
++        candidates: Iterable[int] = range(first_chunk, num_logical_blocks)
++        if chunk_mask is not None:
++            # The coordinator's authoritative mask already excludes these
++            # blocks. Filtering in C avoids per-block Python arithmetic and
++            # callbacks while keeping the selected order/shard numbering.
++            candidates = compress(candidates, islice(chunk_mask, first_chunk, num_logical_blocks))
++        for chunk_id in candidates:
+             start_idx = chunk_id * logical_block_size
+             end_idx = min(start_idx + logical_block_size, token_len)
+             if start_idx < mask_num:
+@@ -624,6 +720,7 @@
+         mask_num: int = 0,
+         kv_cache_group_id: int = 0,
+         chunk_filter: Callable[[int], bool] | None = None,
++        chunk_mask: Sequence[bool] | None = None,
+     ) -> Iterable[tuple[int, int, str, BlockHash | str]]:
+         """Yield cache key strings directly without materializing PoolKey objects."""
+         prefix = self._get_key_prefix(kv_cache_group_id)
+@@ -633,8 +730,18 @@
+             mask_num,
+             kv_cache_group_id,
+             chunk_filter=chunk_filter,
++            chunk_mask=chunk_mask,
+         ):
+-            yield start, end, prefix + block_hash_to_str(hash_val), hash_val
++            yield (
++                start,
++                end,
++                (
++                    self.namespaced_key(block_hash_to_str(hash_val), kv_cache_group_id)
++                    if self.metadata[kv_cache_group_id].cache_namespace is not None
++                    else prefix + block_hash_to_str(hash_val)
++                ),
++                hash_val,
++            )
+ 
+     def process_token_key_strings_with_block_ids(
+         self,
+@@ -647,6 +754,7 @@
+         chunk_filter: Callable[[int], bool] | None = None,
+         shard_rank: int | None = None,
+         shard_size: int | None = None,
++        chunk_mask: Sequence[bool] | None = None,
+     ) -> Iterable[tuple[int, int, str, BlockHash | str, int]]:
+         """Yield cache key strings and resolved block ids without PoolKey allocation."""
+         prefix = self._get_key_prefix(kv_cache_group_id)
+@@ -660,9 +768,20 @@
+             chunk_filter=chunk_filter,
+             shard_rank=shard_rank,
+             shard_size=shard_size,
++            chunk_mask=chunk_mask,
+         ):
+             assert block_id is not None
+-            yield start, end, prefix + block_hash_to_str(hash_val), hash_val, block_id
++            yield (
++                start,
++                end,
++                (
++                    self.namespaced_key(block_hash_to_str(hash_val), kv_cache_group_id)
++                    if self.metadata[kv_cache_group_id].cache_namespace is not None
++                    else prefix + block_hash_to_str(hash_val)
++                ),
++                hash_val,
++                block_id,
++            )
+ 
+     def decode_adaptor_prefill_pp(self, key, addr, size, kv_cache_group_id: int = 0, cache_role: str = "kv"):
+         if self.partitions is None or len(self.partitions) == 1:
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py
+@@ -13,6 +13,9 @@
+     PromMetricT,
+ )
+ from vllm.v1.metrics.utils import create_metric_per_engine
++
++TRANSFER_COUNTERS = tuple(f"{operation}_{state}_{unit}" for operation in ("get", "put")
++                          for state in ("success", "failed") for unit in ("bytes", "keys"))
+ 
+ LOAD_GET_HISTOGRAM_BUCKETS = (
+     1e-3,
+@@ -44,6 +47,9 @@
+         return not self.data
+ 
+     def aggregate(self, other: KVConnectorStats) -> KVConnectorStats:
++        for name in TRANSFER_COUNTERS:
++            if name in other.data:
++                self.data[name] = self.data.get(name, 0) + other.data[name]
+         if durations := other.data.get("load_get_duration_seconds"):
+             self.data.setdefault("load_get_duration_seconds", []).extend(durations)
+         if num_keys := other.data.get("load_get_keys"):
+@@ -62,6 +68,9 @@
+             reduced["ascend_store_load_get_count"] = len(durations)
+             reduced["ascend_store_load_get_avg_ms"] = round(fmean(durations) * 1e3, 3)
+             reduced["ascend_store_load_get_keys"] = self.data.get("load_get_keys", 0)
++        for name in TRANSFER_COUNTERS:
++            if name in self.data:
++                reduced[f"ascend_store_{name}"] = self.data[name]
+         return reduced
+ 
+     def record_operation(self, operation: str, duration_seconds: float, num_keys: int) -> None:
+@@ -84,6 +93,10 @@
+         per_engine_labelvalues: dict[int, list[object]],
+     ) -> None:
+         super().__init__(vllm_config, metric_types, labelnames, per_engine_labelvalues)
++        self._transfer_counters = {name: create_metric_per_engine(
++            self._counter_cls(name=f"vllm:ascend_store_{name}",
++                              documentation=f"MemCache {name.replace(chr(95), chr(32))}", labelnames=labelnames),
++            per_engine_labelvalues) for name in TRANSFER_COUNTERS}
+         self._delayed_release_requests = create_metric_per_engine(
+             self._gauge_cls(
+                 name="vllm:ascend_store_delayed_release_requests",
+@@ -125,6 +138,9 @@
+         )
+ 
+     def observe(self, transfer_stats_data: dict[str, Any], engine_idx: int = 0) -> None:
++        for name, per_engine_metrics in self._transfer_counters.items():
++            if (metric := per_engine_metrics.get(engine_idx)) is not None:
++                metric.inc(transfer_stats_data.get(name, 0))
+         metric = self._load_get_duration.get(engine_idx)
+         if metric is not None:
+             for duration in transfer_stats_data.get("load_get_duration_seconds", ()):
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+@@ -23,6 +23,9 @@
+ from vllm.v1.request import Request
+ from vllm.v1.serial_utils import MsgpackEncoder
+ 
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.cache_compatibility import (
++    cache_namespace, describe_block_view, key_info_matches,
++)
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend import (
+     backend_map,
+     get_layerwise_data_plane,
+@@ -73,6 +76,10 @@
+         self.vllm_config = vllm_config
+         self.use_layerwise = use_layerwise
+         self.kv_cache_config = kv_cache_config
++        self.cache_namespace = cache_namespace(vllm_config, kv_cache_config)
++        self.requires_load_completion = self.cache_namespace is not None
++        logger.info("AscendStore cache protocol=%s namespace=%s",
++                    "sharedkv-c8-memcache-v1" if self.requires_load_completion else "legacy", self.cache_namespace)
+         extra_config = vllm_config.kv_transfer_config.kv_connector_extra_config
+         backend_name = str(extra_config.get("backend", "mooncake"))
+         self.backend_name = backend_name.lower()
+@@ -157,6 +164,7 @@
+         )
+         self._unfinished_requests: dict[str, tuple[Request, list[list[int]]]] = {}
+         self._loading_req_ids: set[str] = set()
++        self._receiving_blocks: dict[str, list[int]] = {}
+ 
+         self._block_pool: BlockPool | None = None
+         self.sending_event_id = 0
+@@ -311,6 +319,7 @@
+                                 pp_rank,
+                                 kv_cache_group_id=kv_cache_group_id,
+                                 cache_family=cache_family,
++                                cache_namespace=getattr(self, "cache_namespace", None),
+                             ),
+                             chunk_hash,
+                         )
+@@ -765,7 +774,7 @@
+             self.use_layerwise,
+         )
+ 
+-        return need_to_allocate, self.load_async and not self.use_layerwise
++        return need_to_allocate, (self.load_async or self.requires_load_completion) and not self.use_layerwise
+ 
+     def update_state_after_alloc(self, request: "Request", blocks: "KVCacheBlocks", num_external_tokens: int):
+         """
+@@ -817,8 +826,14 @@
+         )
+ 
+         self.load_specs[request.request_id].can_load = True
+-        if self.load_async and not self.use_layerwise:
++        if (self.load_async or self.requires_load_completion) and not self.use_layerwise:
+             self._loading_req_ids.add(request.request_id)
++            if self.requires_load_completion:
++                if self._block_pool is None:
++                    raise RuntimeError("Compact receive requires a bound block pool")
++                retained = sorted({block for group in local_block_ids for block in group if block > 0})
++                self._block_pool.touch([self._block_pool.blocks[block] for block in retained])
++                self._receiving_blocks[request.request_id] = retained
+         logger.debug(
+             "KV pool load spec enabled req=%s num_external_tokens=%d vllm_cached=%d kvpool_cached=%d groups=%s",
+             request.request_id,
+@@ -1145,6 +1160,8 @@
+         """
+         hand the connector_output, free non-null mamba blocks and so on.
+         """
++        if getattr(self, "requires_load_completion", False):
++            self.update_finished_recving(connector_output.finished_recving)
+         meta = connector_output.kv_connector_worker_meta
+         if not isinstance(meta, AscendStoreKVConnectorWorkerMetadata) or self._block_pool is None:
+             return
+@@ -1187,6 +1204,11 @@
+     def update_finished_recving(self, finished_recving: set[str] | None) -> None:
+         if finished_recving:
+             self._loading_req_ids.difference_update(finished_recving)
++            for req_id in finished_recving:
++                retained = self._receiving_blocks.pop(req_id, [])
++                if retained:
++                    assert self._block_pool is not None
++                    self._block_pool.free_blocks([self._block_pool.blocks[block] for block in retained])
+ 
+     def get_stats(self) -> AscendStoreKVConnectorStats | None:
+         return None
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+@@ -18,6 +18,7 @@
+     get_pp_group,
+     get_tensor_model_parallel_rank,
+     get_tensor_model_parallel_world_size,
++    get_tp_group,
+ )
+ from vllm.distributed.kv_events import BlockStored
+ from vllm.logger import logger
+@@ -46,6 +47,12 @@
+ )
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend.session_tracker import (
+     LayerwiseSessionTracker,
++)
++from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.cache_compatibility import (
++    cache_namespace,
++    describe_block_view,
++    key_info_matches,
++    write_worker_audit,
+ )
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.coordinator import AscendStoreCoordinator
+ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.dspark_prefix_cache import (
+@@ -142,6 +149,12 @@
+         self.vllm_config = vllm_config
+         self.use_kvpp = KVPPConfig.from_vllm_config(vllm_config).size > 1
+         self.kv_cache_config = kv_cache_config
++        self.cache_namespace = cache_namespace(vllm_config, kv_cache_config)
++        self.requires_load_completion = self.cache_namespace is not None
++        self._completed_sync_loads: set[str] = set()
++        self._failed_sync_loads: set[str] = set()
++        logger.info("AscendStore cache protocol=%s namespace=%s",
++                    "sharedkv-c8-memcache-v1" if self.requires_load_completion else "legacy", self.cache_namespace)
+         hf_text_config = getattr(model_config, "hf_text_config", None)
+         hf_config = getattr(model_config, "hf_config", hf_text_config)
+         self.hf_config = hf_text_config or hf_config
+@@ -423,6 +436,7 @@
+                     self.dcp_rank,
+                     self.pp_rank,
+                     group_id,
++                    cache_namespace=self.cache_namespace,
+                 )
+             )
+ 
+@@ -931,6 +945,8 @@
+         return tuple(cache for cache in cache_or_caches if cache.numel())
+ 
+     def _get_cache_block_metadata(self, cache: torch.Tensor) -> tuple[int, int, int, int]:
++        if self.requires_load_completion:
++            return describe_block_view(cache, self.num_blocks)
+         tensor_num_blocks = cache.shape[0]
+         assert tensor_num_blocks % self.num_blocks == 0, (
+             "The external block size must be an integer multiple of the kernel block size."
+@@ -1198,6 +1214,8 @@
+             group_cache_families=self.group_kv_cache_families,
+             group_num_layers=self.group_num_layers,
+             group_layer_cache_entry_offsets=self.group_layer_cache_entry_offsets,
++            **({"registered_regions": tuple(registered_regions.values()), "num_blocks": self.num_blocks}
++               if self.requires_load_completion else {}),
+         )
+ 
+         if self.tp_mismatch:
+@@ -1218,6 +1236,10 @@
+         if self.use_layerwise_transfer:
+             self.m_store.ensure_initialized()
+         self.m_store.register_buffer(ptrs, lengths)
++        if self.requires_load_completion:
++            audit_dir = self.vllm_config.kv_transfer_config.kv_connector_extra_config.get("cache_audit_dir")
++            if audit_dir:
++                write_worker_audit(audit_dir, self)
+         if self.use_block_key_layerwise:
+             self.m_store.validate_layerwise_support()
+         self._start_kv_transfer_threads()
+@@ -1254,6 +1276,12 @@
+                 continue
+             request.skip_null_blocks_by_group = self.group_uses_align_state
+             load_group_ids = request.kv_cache_group_ids or [0]
++            if self.requires_load_completion and (
++                not set(self.cacheable_group_ids).issubset(load_group_ids)
++                or any(group_id >= len(request.block_ids_by_group) for group_id in self.cacheable_group_ids)
++            ):
++                self._load_compact_request(request.req_id, [], [], [])
++                continue
+             token_len = request.token_len_chunk
+             if (load_spec.kvpool_cached_tokens % self.cache_transfer_granularity != 0) and (
+                 load_spec.kvpool_cached_tokens == token_len - 1
+@@ -1321,6 +1349,9 @@
+                     kv_cache_group_id=group_id,
+                     skip_null_blocks=skip_null,
+                     chunk_filter=chunk_filter,
++                    **({"chunk_mask": load_masks[group_id]}
++                       if self.requires_load_completion and load_masks is not None
++                       and group_id < len(load_masks) else {}),
+                 ):
+                     addr, size, block_id = self.token_database.prepare_value(
+                         start,
+@@ -1333,6 +1364,9 @@
+                     addr_list.append(addr)
+                     size_list.append(size)
+                     block_id_list.append(block_id)
++            if self.requires_load_completion:
++                self._load_compact_request(request.req_id, key_list, addr_list, size_list)
++                continue
+             if not key_list:
+                 continue
+             key_list_c = _circular_shift(key_list, self.tp_rank % len(key_list))
+@@ -1392,12 +1426,57 @@
+                 len(key_list_c),
+             )
+ 
++    def _probe_cache_keys(self, keys: list[str], group_id: int):
++        if not getattr(self, "requires_load_completion", False):
++            return self.m_store.exists(keys)
++        self.ensure_store_initialized()
++        infos = self.m_store.batch_get_key_info(keys)
++        if infos is None or len(infos) != len(keys):
++            raise RuntimeError("MemCache lookup metadata result count mismatch")
++        expected_bytes = sum(self.group_block_len[group_id])
++        return [int(key_info_matches(info, expected_bytes)) for info in infos]
++
++    def _load_compact_request(self, req_id, keys, addrs, sizes):
++        # This request is still WAITING_FOR_REMOTE_KVS. Other requests in this
++        # batch may run, but this one is never passed to attention on failure.
++        success = False
++        try:
++            self.ensure_store_initialized()
++            infos = self.m_store.batch_get_key_info(keys, for_load=True)
++            if not keys or infos is None or len(infos) != len(keys):
++                raise RuntimeError("Incomplete compact KV metadata")
++            if not all(key_info_matches(info, sum(lengths))
++                       for info, lengths in zip(infos, sizes, strict=True)):
++                raise RuntimeError("Missing, unreadable or incorrectly sized compact KV object")
++            started = time.perf_counter()
++            results = require_aligned_batch_results("compact GET", keys, self.m_store.get(keys, addrs, sizes))
++            self._record_kv_connector_operation("load_get", time.perf_counter() - started, len(keys))
++            success = all(result == 0 for result in results)
++        except Exception:
++            logger.exception("Compact KV receive failed req=%s", req_id)
++        # Every TP rank joins even if its local GET or initialization failed.
++        # There is no DP collective: independent DP requests need not coincide.
++        outcome = torch.tensor([int(success)], dtype=torch.int32, device="cpu")
++        torch.distributed.all_reduce(outcome, op=torch.distributed.ReduceOp.MIN, group=get_tp_group().cpu_group)
++        if not bool(outcome[0]):
++            self._failed_sync_loads.add(req_id)
++        # Failed receives are terminal receives too; the scheduler must release
++        # the waiting state and page references through its fail policy.
++        self._completed_sync_loads.add(req_id)
++
++    def take_failed_recving(self) -> set[str]:
++        failed, self._failed_sync_loads = self._failed_sync_loads, set()
++        return failed
++
+     def _record_kv_connector_operation(self, operation: str, duration_seconds: float, num_keys: int) -> None:
+         with self._kv_stats_lock:
+             self._kv_stats.record_operation(operation, duration_seconds, num_keys)
+ 
+     def get_stats(self) -> AscendStoreKVConnectorStats | None:
++        transfer_stats = self.m_store.drain_transfer_stats() if self.backend_name == "memcache" else {}
+         with self._kv_stats_lock:
++            for name, value in transfer_stats.items():
++                self._kv_stats.data[name] = self._kv_stats.data.get(name, 0) + value
+             if self._kv_stats.is_empty():
+                 return None
+             stats = self._kv_stats
+@@ -2952,6 +3031,14 @@
+                 f"Non-layerwise KV save requires KVCacheStoreSendingThread, but got {type(send_thread).__name__}"
+             )
+         self._previous_save_batch = send_thread.add_save_batch(requests)
++        if getattr(self, "requires_load_completion", False):
++            # Compact SWA/state pages may be reused by the next model step of
++            # this same request, not only when a whole request is released.
++            # Keep the existing sender and its write-completion bookkeeping,
++            # but do not let the producer advance while PUT owns these bytes.
++            while not self._previous_save_batch.done.wait(timeout=0.1):
++                send_thread.raise_if_failed()
++            send_thread.raise_if_failed()
+ 
+     def retrieve_layer(
+         self,
+@@ -3295,7 +3382,8 @@
+         else:
+             done_sending = set()
+ 
+-        done_recving = set()
++        done_recving = self._completed_sync_loads.copy()
++        self._completed_sync_loads.clear()
+         if self.kv_recv_thread is not None:
+             self.kv_recv_thread.discard_finished_requests(meta.preempted_req_ids)
+             if self.load_async:
+@@ -3377,7 +3465,7 @@
+                     hits.append(0)
+                     continue
+ 
+-                res = self.m_store.exists(keys)  # type: ignore[assignment]
++                res = self._probe_cache_keys(keys, group_id)
+ 
+                 if use_layerwise:
+                     res = self.check_all_layers_exists(
+@@ -3457,9 +3545,29 @@
+                         expanded.append(self._replace_key_field(rank_key, "pp_rank", pp_rank))
+         return expanded
+ 
+-    def _expand_lookup_key_variants(self, key: str, group_id: int, include_all_ranks: bool) -> list[str]:
++    def _expand_lookup_key_variants(
++        self, key: str, group_id: int, include_all_ranks: bool, chunk_hash=None
++    ) -> list[str]:
+         if not include_all_ranks:
+             return [key]
++        if getattr(self, "cache_namespace", None) is not None:
++            if chunk_hash is None:
++                raise ValueError("Namespaced lookup requires the original token hash")
++            metadata = self.token_database.metadata[group_id]
++            ranks = self.get_group_tp_size(group_id)
++            if (
++                self.pp_size == self.dcp_size == ranks == 1
++                and metadata.pp_rank == metadata.dcp_rank == metadata.head_or_tp_rank == 0
++            ):
++                return [key]
++            return [
++                self.token_database.namespaced_key(
++                    block_hash_to_str(chunk_hash), group_id, head_or_tp_rank=rank, dcp_rank=dcp, pp_rank=pp
++                )
++                for pp in range(self.pp_size)
++                for dcp in range(self.dcp_size)
++                for rank in range(ranks)
++            ]
+         return self._expand_lookup_keys_by_rank([key], group_id)
+ 
+     def _lookup_with_coordinator(
+@@ -3507,14 +3615,15 @@
+                 mask_num=lookup_start,
+                 kv_cache_group_id=group_id,
+                 chunk_filter=chunk_filter,
++                **({"chunk_mask": lookup_mask} if getattr(self, "cache_namespace", None) is not None else {}),
+             ):
+-                variants = self._expand_lookup_key_variants(key_string, group_id, include_all_ranks)
++                variants = self._expand_lookup_key_variants(key_string, group_id, include_all_ranks, chunk_hash)
+                 keys.extend(variants)
+                 chunk_hashes.append(chunk_hash)
+                 variant_counts.append(len(variants))
+ 
+             if keys:
+-                res = self.m_store.exists(keys)  # type: ignore[assignment]
++                res = self._probe_cache_keys(keys, group_id)
+                 offset = 0
+                 for chunk_hash, count in zip(chunk_hashes, variant_counts, strict=True):
+                     values = res[offset : offset + count]  # type: ignore[index]
+@@ -3572,6 +3681,8 @@
+                 if not keys:
+                     return 0
+ 
++                if self.requires_load_completion:
++                    raise ValueError("Compact C8 lookup requires its hybrid cache coordinator")
+                 multi_tp_keys = self._expand_lookup_keys_by_rank(keys, group_id)
+                 num_ranks = len(multi_tp_keys) // len(keys)
+                 res = self.m_store.exists(multi_tp_keys)  # type: ignore[assignment]
+diff --git a/vllm_ascend/patch/platform/patch_compact_load_progress.py b/vllm_ascend/patch/platform/patch_compact_load_progress.py
+new file mode 100644
+--- /dev/null
++++ b/vllm_ascend/patch/platform/patch_compact_load_progress.py
+@@ -0,0 +1,179 @@
++"""Progress synchronous C8 receive batches before the DP dummy fallback.
++
++The asynchronous engine queue normally spends two outer iterations submitting
++and collecting a zero-token receive. Each iteration triggers a full DP dummy
++model pass. The receive itself has no DP model collective with the mp executor,
++so its completion can be consumed before choosing this iteration's one forward.
++
++Keep the upstream scheduler/abort/output paths, WAITING_FOR_REMOTE_KVS, TP
++receive consensus and page ownership unchanged. This patch only advances the
++existing queue; it never promotes a request or calls attention directly.
++
++Upstream follow-up: expose a connector capability for synchronous, zero-token
++progress without consuming a DP model iteration, then remove this pinned patch.
++"""
++
++from __future__ import annotations
++
++import functools
++import hashlib
++from collections.abc import Callable
++from pathlib import Path
++from queue import Empty
++from typing import Any
++
++FIRST_WAVE_INPUT_WAIT_SECONDS = 0.005
++
++ENGINE_CORE_SHA256 = "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
++
++
++def _has_forward(batch_queue: Any) -> bool:
++    return any(output.total_num_scheduled_tokens > 0 for _, output, _ in batch_queue)
++
++
++def _pending_receives(scheduler: Any, pool: Any) -> set[str]:
++    # Include completed but not yet promoted receives (also covers queue size 1).
++    return set(pool._loading_req_ids) | scheduler.finished_recving_kv_req_ids
++
++
++def _await_zero_batch(engine: Any) -> bool:
++    """Admit input that arrived during the existing synchronous receive.
++
++    The queued zero-token batch keeps has_work() true, so the upstream input
++    method drains available messages without blocking. No new transfer thread
++    or model execution is started here. In particular, observing a completed
++    future does not publish its receive result to the scheduler yet. The mp
++    executor's FutureWrapper is lazy: result(), not done(), drives reception.
++    """
++    future, output, _ = engine.batch_queue[-1]
++    assert output.total_num_scheduled_tokens == 0
++    before = set(engine.scheduler.requests)
++    process_inputs = getattr(engine, "_process_input_queue", None)
++    if process_inputs is not None:
++        process_inputs()
++    with engine.log_error_detail(output):
++        future.result()
++    if process_inputs is not None:
++        process_inputs()
++    return bool(set(engine.scheduler.requests) - before)
++
++
++def _consume_zero_batch(engine: Any) -> None:
++    """Consume one FIFO result using the hash-pinned upstream completion path.
++
++    Unlike another schedule/execute step, this does not submit an empty worker
++    batch or schedule a forward ahead of an already submitted receive result.
++    The same abort, scheduler, output and post-step hooks retain ownership and
++    fail-policy handling. A completed future needs no background-I/O GIL yield.
++    """
++    future, output, exec_future = engine.batch_queue.pop()
++    assert output.total_num_scheduled_tokens == 0
++    with engine.capture_iteration_details(output) as details, engine.log_error_detail(output):
++        model_output = future.result()
++        if model_output is None:
++            exec_future.result()
++            raise RuntimeError("unexpected error")
++    engine._process_aborts_queue()
++    outputs = engine.scheduler.update_from_output(output, model_output)
++    engine._attach_iteration_details(outputs, details)
++    for item in outputs.items() if outputs else ():
++        engine.output_queue.put_nowait(item)
++    engine.post_step(False)
++
++
++def progress_step(engine: Any, original: Callable[[Any], bool]) -> bool:
++    scheduler = engine.scheduler
++    connector = getattr(scheduler, "connector", None)
++    pool = getattr(connector, "connector_scheduler", None)
++    batch_queue = engine.batch_queue
++    if pool is None or pool.requires_load_completion is not True or batch_queue is None or not engine.is_ec_consumer:
++        return original(engine)
++
++    # START_DP_WAVE can precede an already dispatched local request. Only
++    # the idle peer in the first wave waits briefly for its existing input
++    # queue. A real input ends the wait immediately; all message kinds keep
++    # their original handler. The upper bound is verified in per-case timing.
++    if (
++        getattr(engine, "engines_running", False)
++        and engine.step_counter == 0
++        and not engine.pending_pause
++        and not batch_queue
++        and not scheduler.has_requests()
++    ):
++        try:
++            message = engine.input_queue.get(timeout=FIRST_WAVE_INPUT_WAIT_SECONDS)
++        except Empty:
++            pass
++        else:
++            engine._handle_client_request(*message)
++        engine._process_input_queue()
++
++    # An already submitted forward must retain its normal outer-loop ordering,
++    # even if this call consumes its result and leaves an empty queue.
++    had_forward = _has_forward(batch_queue)
++    pending = _pending_receives(scheduler, pool)
++    executed = original(engine)
++    if executed or had_forward:
++        return executed
++    pending |= _pending_receives(scheduler, pool)
++
++    # Drain at most a queue's worth of zero-token outputs plus one promotion.
++    # Synchronous GET may block here, just as future.result() normally does.
++    # No polling thread, unbounded busy loop, or extra real forward is added.
++    for _ in range(engine.batch_queue_size + 1):
++        live = any(
++            request_id in scheduler.requests and not scheduler.requests[request_id].is_finished()
++            for request_id in pending
++        )
++        if not live or _has_forward(batch_queue):
++            break
++        if batch_queue:
++            if _await_zero_batch(engine):
++                # The earlier result is still queued. Let the original
++                # scheduler submit loads for newly arrived requests before
++                # promoting that earlier receive into a real prefill.
++                executed = original(engine)
++                if executed or _has_forward(batch_queue):
++                    return executed
++                pending |= _pending_receives(scheduler, pool)
++            for _ in range(engine.batch_queue_size):
++                if not batch_queue or _has_forward(batch_queue):
++                    break
++                _await_zero_batch(engine)
++                _consume_zero_batch(engine)
++            pending |= _pending_receives(scheduler, pool)
++            if not any(
++                request_id in scheduler.requests and not scheduler.requests[request_id].is_finished()
++                for request_id in pending
++            ):
++                break
++        executed = original(engine)
++        if executed:
++            return True
++        pending |= _pending_receives(scheduler, pool)
++    return False
++
++
++def install(config: Any) -> bool:
++    """Install only in the C8 scheduler process for the audited mp DP engine."""
++    if config.parallel_config.distributed_executor_backend != "mp":
++        return False
++    # Lazy: workers must not import/modify the scheduler engine during setup.
++    from vllm.v1.engine import core
++
++    if hashlib.sha256(Path(core.__file__).read_bytes()).hexdigest() != ENGINE_CORE_SHA256:
++        raise ValueError("Compact C8 load progress requires the validated vLLM engine core source")
++    engine_class = core.DPEngineCoreProc
++    if engine_class.__module__ != core.__name__:
++        raise ValueError("Compact C8 load progress requires the standard DP engine")
++    original = engine_class._process_engine_step
++    if getattr(original, "_compact_load_progress", False):
++        return True
++
++    @functools.wraps(original)
++    def process_engine_step(engine: Any) -> bool:
++        return progress_step(engine, original)
++
++    process_engine_step._compact_load_progress = True
++    engine_class._process_engine_step = process_engine_step
++    return True
+diff --git a/vllm_ascend/worker/compact_dp_metadata.py b/vllm_ascend/worker/compact_dp_metadata.py
+new file mode 100644
+--- /dev/null
++++ b/vllm_ascend/worker/compact_dp_metadata.py
+@@ -0,0 +1,102 @@
++"""Relay identical TP metadata through one DP representative per host.
++
++The compact protocol admits two local TP16 groups with no context/pipeline
++parallelism. All TP workers receive the same scheduler input and choose the
++same graph mode. Exchange that input between the two TP leaders, then use the
++existing TP shared-memory broadcaster. Preserve the original SUM reduction,
++padding decisions and graph-mode minimum. This is unrelated to KV receive
++consensus: every TP worker still participates in that separate failure barrier.
++"""
++
++from __future__ import annotations
++
++import logging
++from typing import Any
++
++import torch
++import torch.distributed as dist
++from vllm.distributed.parallel_state import get_dp_group, get_tp_group
++
++_TAG = "sharedkv-dp-metadata-v1"
++
++
++def _enabled(runner: Any) -> bool:
++    selected = getattr(runner, "_compact_dp_metadata_relay", None)
++    if selected is not None:
++        return selected
++    config = runner.vllm_config
++    transfer = config.kv_transfer_config
++    extra = transfer.kv_connector_extra_config if transfer is not None else {}
++    selected = bool(extra.get("cache_compatibility_manifest"))
++    if selected:
++        parallel = config.parallel_config
++        required = {
++            "tensor_parallel_size": 16,
++            "data_parallel_size": 2,
++            "data_parallel_size_local": 1,
++            "pipeline_parallel_size": 1,
++            "prefill_context_parallel_size": 1,
++            "decode_context_parallel_size": 1,
++        }
++        if any(getattr(parallel, name, None) != value for name, value in required.items()):
++            raise ValueError("Compact DP metadata relay requires local TP16 / DP2 / PP1 / CP1")
++        if transfer.kv_connector != "AscendStoreConnector" or extra.get("backend") != "memcache":
++            raise ValueError("Compact DP metadata relay requires AscendStore MemCache")
++        tp, dp = get_tp_group(), get_dp_group()
++        queue = tp.mq_broadcaster
++        if (
++            tp.world_size != 16
++            or dp.world_size != 2
++            or queue is None
++            or queue.handle.local_reader_ranks != list(range(1, 16))
++            or queue.handle.remote_subscribe_addr is not None
++            or runner.dp_rank not in (0, 1)
++        ):
++            raise ValueError("Compact DP metadata relay requires all TP workers on one shared-memory host")
++        logging.getLogger(__name__).info(
++            "Compact DP metadata relay enabled: TP rank=%d DP rank=%d", tp.rank_in_group, runner.dp_rank
++        )
++    runner._compact_dp_metadata_relay = selected
++    runner._compact_dp_metadata_sequence = 0
++    return selected
++
++
++def reduce_dp_metadata(runner: Any, packed: torch.Tensor) -> None:
++    """Update the caller's ordinary CPU int32 metadata tensor in place."""
++    if not _enabled(runner):
++        dist.all_reduce(packed, group=get_dp_group().cpu_group)
++        return
++    if packed.device.type != "cpu" or packed.dtype != torch.int32 or tuple(packed.shape) != (2, 2):
++        raise ValueError("Compact DP metadata tensor must be CPU int32[2,2]")
++    tp = get_tp_group()
++    sequence = runner._compact_dp_metadata_sequence
++    local = packed[:, runner.dp_rank].tolist()
++    if tp.rank_in_group == 0:
++        # Same two-rank reduction and same zero-filled columns as upstream.
++        dist.all_reduce(packed, group=get_dp_group().cpu_group)
++        payload = (_TAG, sequence, local, packed.tolist())
++    else:
++        payload = None
++    payload = tp.broadcast_object(payload, src=0)
++    if (
++        not isinstance(payload, tuple)
++        or len(payload) != 4
++        or payload[0] != _TAG
++        or payload[1] != sequence
++        or payload[2] != local
++    ):
++        # Reject rank-dependent graph choices or stale messages before forward.
++        # Worker failure is propagated by the existing executor watchdog.
++        raise RuntimeError("Compact DP metadata sequence or local TP input mismatch")
++    values = payload[3]
++    if (
++        not isinstance(values, list)
++        or len(values) != 2
++        or any(not isinstance(row, list) or len(row) != 2 for row in values)
++        or any(type(value) is not int or not 0 <= value <= 2147483647 for row in values for value in row)
++        or [values[0][runner.dp_rank], values[1][runner.dp_rank]] != local
++    ):
++        raise RuntimeError("Malformed compact DP metadata result")
++    if tp.rank_in_group != 0:
++        packed.copy_(torch.tensor(values, dtype=torch.int32, device="cpu"))
++    runner._compact_dp_metadata_sequence = sequence + 1
+diff --git a/vllm_ascend/worker/model_runner_v1.py b/vllm_ascend/worker/model_runner_v1.py
+--- a/vllm_ascend/worker/model_runner_v1.py
++++ b/vllm_ascend/worker/model_runner_v1.py
+@@ -150,6 +150,7 @@
+     update_full_graph_params,
+ )
+ from vllm_ascend.compilation.breakable_aclgraph import BreakableACLGraphWrapper
++from vllm_ascend.compilation.task_queue import startup_graph_task_queue
+ from vllm_ascend.core.kv_cache_interface import is_circular_kv_cache_spec
+ from vllm_ascend.device.hardware_profile import HardwareCapability, get_current_hardware_profile
+ from vllm_ascend.distributed.kv_transfer.kv_p2p.sfa_pd_rd2h import get_prebound_copy_sfa_slots
+@@ -844,7 +845,9 @@
+         packed_tensor = torch.zeros(2, self.dp_size, device="cpu", dtype=torch.int32)
+         packed_tensor[0][self.dp_rank] = num_tokens
+         packed_tensor[1][self.dp_rank] = cudagraph_mode.value
+-        dist.all_reduce(packed_tensor, group=get_dp_group().cpu_group)
++        from vllm_ascend.worker.compact_dp_metadata import reduce_dp_metadata
++
++        reduce_dp_metadata(self, packed_tensor)
+ 
+         # Unpack the results
+         num_tokens_across_dp = packed_tensor[0, :]
+@@ -6432,7 +6435,11 @@
+         parent_module_name = _get_gpu_model_runner_module_name(self)
+         self._engram_capture_active = True
+         try:
+-            with _torch_cuda_wrapper(), _replace_gpu_model_runner_function_wrapper(parent_module_name):
++            with (
++                startup_graph_task_queue(torch.npu),
++                _torch_cuda_wrapper(),
++                _replace_gpu_model_runner_function_wrapper(parent_module_name),
++            ):
+                 cuda_graph_size = GPUModelRunner.capture_model(self)
+         finally:
+             self._engram_capture_active = False
+@@ -6441,6 +6448,7 @@
+         if mgr is not None and self.update_stream is not None:
+             mgr.update_stream = self.update_stream
+ 
++        logger.info("Startup graph capture completed; effective task queue level=%d", torch.npu.get_task_queue_enable())
+         return cuda_graph_size
+ 
+     def _prepare_multimodal_fields(self):

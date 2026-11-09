@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11 — MemCache integration (`0.65.1+memcache.10`)
+
+- Add a versioned compact KV namespace, numerical scale identity and paired framework validation.
+- Transfer real component bytes, precompute complete block plans, and preserve shared-backing guards.
+- Keep requests waiting until synchronous GET and TP consensus complete; isolate failed receives.
+- Add deployment/preflight/worker checks, explicit NPU roundtrip tests and external FIFO replay tools.
+- Preserve all 45 frozen native source files and the p101 algorithm. No blanket BF16 performance parity claim.
+
 ## 2026-11-03 — 独立工程整理
 
 - 从 `v65-p101-stage1` 整理 INT8 attention、KV writer、分页布局与 vLLM integration。

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "npu-sparse-attn-sharedkv-int8"
-version = "0.65.1"
+version = "0.65.1+memcache.10"
 description = "INT8 sparse shared-KV attention and paged KV cache for Ascend DAV2201"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,7 @@ classifiers = [
 [project.optional-dependencies]
 npu = ["torch-npu>=2.10,<2.11"]
 test = ["pytest>=8,<10"]
+benchmark = ["aiohttp>=3.10,<4", "numpy>=1.26,<3"]
 
 [project.entry-points."vllm.general_plugins"]
 sharedkv_int8 = "npu_sparse_attn_sharedkv_int8.vllm_plugin:register"

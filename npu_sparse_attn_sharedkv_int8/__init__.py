@@ -1,7 +1,7 @@
 """INT8 shared-KV attention. CPU references import without torch_npu or vLLM."""
 from importlib import import_module
 
-__version__ = "0.65.1"
+__version__ = "0.65.1+memcache.10"
 __stage__ = "v65-p101-stage1"
 
 __all__ = ["CacheQuantization", "SharedKVCase", "PreparedAttention", "PreparedCacheWrite"]

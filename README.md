@@ -3,9 +3,20 @@
 面向 **DeepSeek V4 shared-KV sparse attention** 的 AscendC 实现，包含 INT8
 attention、分页 INT8 KV Cache、冻结通道校准和 vLLM Ascend 接入。
 
-当前算法基线：**`v65-p101-stage1`**，Python 包版本 **`0.65.1`**。
+当前算法基线：**`v65-p101-stage1`**，Python 包版本 **`0.65.1+memcache.10`**。
 Q/P 保留双残差；QK/PV 使用真正的 INT8 Cube，softmax 与累积使用 FP32；
 KV 使用 `sharedkv-c8-v1` 对称 per-channel INT8，不保存 KV residual。
+
+## MemCache 接入
+
+新增 compact INT8 KV 与 MemCache 1.3.0 接入，使用配套 vLLM-Ascend 补丁。
+当前范围为双节点 DP2 / TP16 / EP / DSpark5，每节点独立 256 GiB DRAM 池，client 0GB。
+Q/P 双残差、p101 设备源码与冻结 scale 保持不变。
+
+入口：[协议与边界](docs/memcache.md)、[部署与验收](examples/memcache/README.md)、
+[框架补丁](patches/vllm-ascend/README.md)、[压力回放](benchmarks/memcache/README.md)。
+验收结果：[正确性与容量](docs/memcache-acceptance.md)、[压力数据与对照](docs/memcache-pressure-results.md)。
+当前仍有逐场景性能退化，不能宣称 INT8＋MemCache 全面不慢于 BF16。
 
 ## 支持范围
 
@@ -20,12 +31,12 @@ KV 使用 `sharedkv-c8-v1` 对称 per-channel INT8，不保存 KV residual。
 | 推理接入 | vLLM general plugin、有序 host queue、compact pages、DSpark cache writer |
 | 边界 | 不支持 context parallel；其他芯片、模型与软件组合需另行验证 |
 
-这是阶段定版：历史主矩阵 331 个 case 的数值检查通过，其中 8 个 case 比 BF16
+原 p101 算子基线的历史主矩阵 331 个 case 的数值检查通过，其中 8 个 case 比 BF16
 慢超过 5%，最差约 19.8%。[验证记录](docs/validation.md)说明证据口径和已知限制。
 
-新 wheel 已完成双节点、32 worker 的真实 vLLM 回归：32 条请求中 30 条与同项基线
+原 p101 wheel 曾完成双节点、32 worker 的真实 vLLM 回归：32 条请求中 30 条与同项基线
 文本 / token 完全一致，另 2 条长输入仅在原基线已出现的措辞之间变化；
-R1/C4/C128 的真实 NPU adapter 检查通过。详见 [本轮回归](docs/validation.md)。
+R1/C4/C128 的真实 NPU adapter 检查通过。详见 [历史回归](docs/validation.md)。
 
 ## 安装与构建
 
@@ -96,7 +107,7 @@ source /path/to/ascend-int8-attention/configs/int8_stage1.env
 也可以把现有启动命令的 `vllm serve` 替换为
 `bash /path/to/ascend-int8-attention/examples/vllm/serve.sh`，模型路径及其余参数保持原值。
 安装包通过 `vllm.general_plugins` 注册 `sharedkv_int8`，由 vLLM 自动发现并加载。
-在匹配的已验证分支上，通过插件运行时替换内部方法接入，无需额外修改源码文件。
+在匹配的已验证分支上，通过插件运行时替换内部方法接入，不带 MemCache 时无需额外修改源码文件；MemCache 接入需要配套补丁。
 
 阶段配置设置以下变量：
 

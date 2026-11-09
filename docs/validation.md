@@ -1,5 +1,18 @@
 # 验证与已有证据
 
+## MemCache 接入收尾（2026-11）
+
+当前插件 `0.65.1+memcache.10` 的 CPU 36 项及 C++ 调度检查通过；
+配套干净框架补丁的 CPU 832 项通过，另有 12 项原有跳过。
+整理后的 NPU 字节往返、双 stream / graph、恢复后 attention、32 worker 身份、真实模型
+失败隔离、重启首次 GET 和当前版本每池 32→64→128 GiB 实际占用验收通过。
+
+27 条完整 token 检查中 18 条属于稳定结果，
+9 条匹配同输入的独立无 MemCache 已观察变体。
+两组压力回放各完成 324 请求；逐场景 TTFT、TPOT、吞吐全面不退化仍未通过。
+详见 [收尾验收](memcache-acceptance.md) 和 [压力结果](memcache-pressure-results.md)。
+以下各节保留对应历史日期的验证范围与结果。
+
 ## wheel 真实服务器回归（2026-11-03）
 
 在两个节点隔离安装新 wheel，保留原有全局 Python 安装；保持既有 DeepSeek V4 Pro

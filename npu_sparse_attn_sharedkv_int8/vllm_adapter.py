@@ -17,6 +17,7 @@ import torch_npu  # noqa: F401
 from .attention import PreparedAttention
 from .c8_attention import enabled as c8_enabled
 from .cache import PreparedCacheWrite
+from .memcache_manifest import validate_transfer_mode
 from .reference import SharedKVCase
 from .runtime import native_launcher
 
@@ -252,6 +253,7 @@ def install():
         original_spec = cls.get_kv_cache_spec
 
         def spec(self, config, _original=original_spec):
+            validate_transfer_mode(config, compact_pages)
             old = _original(self, config)
             if old is None:
                 return None

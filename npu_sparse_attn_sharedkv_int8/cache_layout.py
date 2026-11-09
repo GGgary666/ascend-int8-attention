@@ -99,7 +99,9 @@ def cache_config(config, groups, available_memory):
         "pipeline_parallel_size", "decode_context_parallel_size", "prefill_context_parallel_size")):
         raise ValueError("Compact C8 pages are integrated for single-stage, non-context-parallel serving")
     if getattr(config, "kv_transfer_config", None) is not None:
-        raise ValueError("Compact C8 pages have not been integrated with distributed KV transfer")
+        from .memcache_manifest import validate_transfer
+        from .vllm_adapter import load_scales
+        validate_transfer(config, load_scales())
     stride, offsets = packed_layout(groups)
     blocks = may_override_num_blocks(config, available_memory // stride)
     size = blocks * stride

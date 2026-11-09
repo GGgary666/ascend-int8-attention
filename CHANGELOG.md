@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-09：最终 MTP 组件整理
+
+- 保存最终 INT8/BF16 G2 同序物理 KV 复用源码、构建和有序 launcher，采用手动接入。
+- 附原60 shape/30真实输入及270请求 MemCache 对比的聚合证据，明确公平比较和精度边界。
+- 保持维护版 p101 默认行为；不引入混合 PV、消融或调试候选。
+
 ## 2026-11 — MemCache integration (`0.65.1+memcache.10`)
 
 - Add a versioned compact KV namespace, numerical scale identity and paired framework validation.

@@ -18,6 +18,13 @@ Q/P 双残差、p101 设备源码与冻结 scale 保持不变。
 验收结果：[正确性与容量](docs/memcache-acceptance.md)、[压力数据与对照](docs/memcache-pressure-results.md)。
 当前仍有逐场景性能退化，不能宣称 INT8＋MemCache 全面不慢于 BF16。
 
+## 可选 MTP KV 复用组件
+
+已保存的 INT8 与 BF16 两 query 复用实现位于 [extras/mtp](extras/mtp/README.md)，
+包含独立构建入口、原始有序 host bridge、显式索引契约和源码身份清单。
+它们需手动接入；默认 p101 内核和插件入口保持原有行为。
+公平对照与已有验证范围见 [MTP 验证说明](docs/mtp-reuse.md)。
+
 ## 支持范围
 
 | 项目 | 当前支持 |

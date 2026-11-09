@@ -15,3 +15,4 @@ prune npu_sparse_attn_sharedkv_int8/_native
 
 recursive-include patches *.patch *.json *.md
 recursive-include release *.csv
+recursive-include extras *.py *.cpp *.h *.txt *.md *.json

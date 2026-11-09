@@ -14,3 +14,5 @@ npu_sparse_attn_sharedkv_int8/_native/
 *.private.json
 PROF_*/
 *.pt.trace.json
+host_build/
+extras/mtp/*/lib/

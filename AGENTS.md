@@ -21,3 +21,6 @@ Read README.md, docs/architecture.md and docs/validation.md before changing it.
 
 - MemCache integration requires the paired patch and generated compatibility manifest.
 - Keep pressure datasets, private deployment snapshots, profiles and machine paths outside the repository.
+- The user-approved final G2 MTP sources are retained separately in extras/mtp.
+  They are manual opt-in components, not changes to the maintained p101 default.
+  Do not import hybrid-PV, ablation, debug, or rejected optimization code here.

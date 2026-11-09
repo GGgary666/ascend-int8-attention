@@ -1,0 +1,54 @@
+{
+  "int8": {
+    "files": {
+      "CMakeLists.txt": "710e2e1897d5e6113612dbf38b867b4f4f9f2eac15c142919dfd2b5ef50b29db",
+      "__init__.py": "9c2072af079dc6c1701b7b5d96bc3dde69d0d93b9d002e59c53efb445a76aacc",
+      "build_host.py": "29dc83aa0d0cede359964413a371b0dc624ea37ea8e5ab1708002ac37a68fb88",
+      "csrc/kernels/c8/args.h": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d",
+      "csrc/kernels/cube_pair_pipeline.h": "2cbb115a25926cf891a510fe58c2acca8db35090a1780da45e1027a6666bd25c",
+      "csrc/kernels/residual_quant.h": "914a099c95b43079a6c23aeda0772921d3a3b615884a59813b46b6c2ec6a2c8f",
+      "csrc/kernels/row_scale_vector.h": "0cc3e9bc85e3351d80f4a22981efbedf65fd3aa17085af816dad1b85d7d8277b",
+      "csrc/kernels/sharedkv.cpp": "240fefd03a5a278e7cb4afb1132010ccdd4aa3afee401991035a9376d906c3bf",
+      "csrc/kernels/sharedkv.h": "cfaa41f6cc7a428f8a295a927b0f8e950afd2f8b354e700acc2cb18adb08af8a",
+      "csrc/kernels/sharedkv_config.h": "18ea34ceb3909a605f94c67d31278b1a0ce5b7793bc06c8f4a9cdef0479eb7e0",
+      "csrc/kernels/sparse_gather.h": "3894b19a6d1b7aa44e422eaf09e54f9ab0c4092c1c8e767f2bb4d893755e9fe7",
+      "csrc/kernels/vector_batch.h": "f1d969c387d8915434edff0f973b33e98d92705873b5e4ac738efa5ce6a0294d",
+      "csrc/kernels/vector_math.h": "223f4610815230b08888076f1d450a9304fde0051688f69fc6512aa0d2406af3",
+      "host_pointer.cpp": "fff4cc3ceade9984f5b1c72061ede5d4c8c638719ebbc4e945376e0e663e2528",
+      "runtime.py": "68e26a0141a8bb70e06a37d08862970a7120e9868f072f025d77ad01f30a382f"
+    },
+    "scope": "final G2 MTP component; manual opt-in; maintained p101 default untouched"
+  },
+  "bf16": {
+    "files": {
+      "CMakeLists.txt": "3aef4fe2e729933131c884f3111d0ed65811eb517a412e5ee4f2bf13363400f8",
+      "__init__.py": "698230bc03b5a6594c52b3ff56669681225d5200b48c7af4d057f4f35b5d583d",
+      "build_host.py": "29dc83aa0d0cede359964413a371b0dc624ea37ea8e5ab1708002ac37a68fb88",
+      "csrc/args.h": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d",
+      "csrc/bf16_mtp.cpp": "02a248f9439afdbbfd62787376f48e1d900aa9d27461c4a97a98f72c74d67ae4",
+      "csrc/kernels/c8/args.h": "326ec5238929e0538a3ec0194027e932e49d1132594d545a17daa8f30063376d",
+      "host_pointer.cpp": "fff4cc3ceade9984f5b1c72061ede5d4c8c638719ebbc4e945376e0e663e2528",
+      "runtime.py": "4a4448e661a48cd49e8181be7111c40dac294e0929a5e53a26d5077386fdbc21"
+    },
+    "scope": "final G2 MTP component; manual opt-in; maintained p101 default untouched"
+  },
+  "validation": {
+    "int8": {
+      "matrix_cases": 60,
+      "real_input_cases": 30,
+      "strict_post_prompt_real": 15,
+      "measured_device_library_sha256": "41630cdf15b8aed23aaf6d4d79c5ddc81eddd605b95b43af9a35dfee4513b8e8"
+    },
+    "bf16": {
+      "matrix_cases": 60,
+      "real_input_cases": 30,
+      "strict_post_prompt_real": 15,
+      "bitwise_native_bf16": true,
+      "fresh_rebindings": 96,
+      "graph_updates": 96,
+      "measured_device_library_sha256": "a5a9c2a4fda7d8cd57ca54e4a2e95d8212afc6c8539199842e62e5441df84d60"
+    },
+    "packaging": "device source unchanged; BF16 G1 build and API excluded; no new NPU tests during repository cleanup",
+    "limitations": "Kernel acceptance is not full-model quality acceptance or universal E2E speedup; inherited main INT8 precision limitations persist."
+  }
+}
